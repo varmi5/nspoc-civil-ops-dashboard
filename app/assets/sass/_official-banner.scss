@@ -1,11 +1,14 @@
+// Matches the real report's own classification marking — plain, small, centred black
+// text, not a heavy filled block. A solid black bar reads as an error/alert state on a
+// GOV.UK page, which undermines the marking rather than making it clearer.
 .official-banner {
-  background-color: govuk-colour("black");
-  color: govuk-colour("white");
   text-align: center;
+  color: govuk-colour("black");
   font-weight: bold;
-  letter-spacing: 2px;
-  padding: 2px 0;
-  margin: govuk-spacing(4) 0;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  @include govuk-font($size: 16);
+  margin: govuk-spacing(3) 0;
 }
 
 .official-handling-note {

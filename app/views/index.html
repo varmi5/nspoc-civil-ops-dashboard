@@ -28,7 +28,7 @@
 <h2 class="govuk-heading-l">Data analysis (reporting period)</h2>
 <div class="govuk-grid-row">
   {% for donutItem in viewModel.donuts %}
-    <div class="govuk-grid-column-one-half">
+    <div class="govuk-grid-column-one-third">
       {{ mshBadge(donutItem.isLive) }}
       {% if donutItem.href %}
         {{ donutChart(donutItem.title, donutItem.chart) }}

@@ -1,0 +1,35 @@
+.msh-month-strip {
+  display: flex;
+  gap: govuk-spacing(2);
+  overflow-x: auto;
+  padding-bottom: govuk-spacing(2);
+  margin-bottom: govuk-spacing(6);
+  scroll-snap-type: x proximity;
+}
+
+.msh-month-strip__card {
+  flex: 0 0 auto;
+  min-width: 100px;
+  border: 1px solid govuk-functional-colour(border);
+  padding: govuk-spacing(2);
+  text-align: center;
+  scroll-snap-align: start;
+}
+
+.msh-month-strip__label {
+  display: block;
+  @include govuk-font($size: 16, $weight: bold);
+  color: govuk-colour("black", $variant: "tint-25");
+}
+
+.msh-month-strip__value {
+  display: block;
+  @include govuk-font($size: 24, $weight: bold);
+  margin: govuk-spacing(1) 0;
+}
+
+.msh-month-strip__sub {
+  display: block;
+  @include govuk-font($size: 16);
+  color: govuk-colour("black", $variant: "tint-25");
+}

@@ -10,7 +10,19 @@
 @media print {
   .msh-kpi-tile,
   .msh-donut-chart,
+  .msh-month-strip__card,
   .govuk-table__row {
     break-inside: avoid;
+  }
+
+  // A horizontal-scroll strip only shows what's on screen — unwrap it on paper so every
+  // month prints, not just whichever ones were scrolled into view.
+  .msh-month-strip {
+    overflow-x: visible;
+    flex-wrap: wrap;
+  }
+
+  .msh-month-strip__scroll-hint {
+    display: none;
   }
 }
