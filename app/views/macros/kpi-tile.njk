@@ -1,0 +1,41 @@
+{% from "macros/badge.njk" import mshBadge %}
+
+{#
+Renders one KPI tile. `params`:
+  label       (string, required)
+  value       (string|number, required)
+  unit        (string, optional)
+  delta       (string, optional) — e.g. "- 20 (29%)"
+  deltaGood   (boolean, optional) — true renders green/up, false renders red/down,
+              omitted renders neutral grey. Decided by the caller, since "up" isn't
+              always good (e.g. more high-risk collision alerts is bad; more UK objects
+              in orbit is neutral/expected growth).
+  href        (string, optional) — wraps the tile in a link when present
+  isLive      (boolean, optional) — when passed (not undefined), renders the
+              Live/Sample badge inside the tile so it stays visually attached to it in
+              the wrapping grid, rather than floating as a separate grid item.
+#}
+{% macro kpiTile(params) %}
+  {% set deltaClass = "msh-kpi-tile__delta--neutral" %}
+  {% if params.deltaGood == true %}{% set deltaClass = "msh-kpi-tile__delta--up" %}{% endif %}
+  {% if params.deltaGood == false %}{% set deltaClass = "msh-kpi-tile__delta--down" %}{% endif %}
+
+  {% if params.href %}
+    <a class="msh-kpi-tile" href="{{ params.href }}">
+  {% else %}
+    <div class="msh-kpi-tile">
+  {% endif %}
+      <span class="msh-kpi-tile__label">{{ params.label }}</span>
+      <span class="msh-kpi-tile__value">{{ params.value }}{% if params.unit %} {{ params.unit }}{% endif %}</span>
+      {% if params.delta %}
+        <span class="msh-kpi-tile__delta {{ deltaClass }}">{{ params.delta }}</span>
+      {% endif %}
+      {% if params.isLive != undefined %}
+        <span class="msh-kpi-tile__badge">{{ mshBadge(params.isLive) }}</span>
+      {% endif %}
+  {% if params.href %}
+    </a>
+  {% else %}
+    </div>
+  {% endif %}
+{% endmacro %}

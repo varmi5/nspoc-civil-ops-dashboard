@@ -1,0 +1,38 @@
+[
+  {
+    "norad_id": "99001",
+    "short_id": "RE00-0001",
+    "object_name": "SAMPLE ROCKET R/B",
+    "object_type": "ROCKET BODY",
+    "estimated_mass": 250,
+    "decay_epoch": "2026-05-03T00:00:00",
+    "atmospheric_risk": "Low",
+    "human_casualty_risk": null,
+    "fragments_risk": null,
+    "license_country": "US"
+  },
+  {
+    "norad_id": "99002",
+    "short_id": "RE00-0002",
+    "object_name": "SAMPLE-DEBRIS-1",
+    "object_type": "DEBRIS",
+    "estimated_mass": 40,
+    "decay_epoch": "2026-05-08T00:00:00",
+    "atmospheric_risk": null,
+    "human_casualty_risk": null,
+    "fragments_risk": null,
+    "license_country": null
+  },
+  {
+    "norad_id": "99003",
+    "short_id": "RE00-0003",
+    "object_name": "SAMPLE-SAT-42",
+    "object_type": "PAYLOAD",
+    "estimated_mass": 1200,
+    "decay_epoch": "2026-05-14T00:00:00",
+    "atmospheric_risk": "Medium",
+    "human_casualty_risk": "Low",
+    "fragments_risk": "Low",
+    "license_country": "GB"
+  }
+]

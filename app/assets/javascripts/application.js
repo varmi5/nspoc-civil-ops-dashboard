@@ -4,5 +4,11 @@
 //
 
 window.GOVUKPrototypeKit.documentReady(() => {
-  // Add JavaScript here
+  document.querySelectorAll('.js-print-link').forEach((link) => {
+    link.classList.remove('msh-print-link--hidden')
+    link.addEventListener('click', (event) => {
+      event.preventDefault()
+      window.print()
+    })
+  })
 })

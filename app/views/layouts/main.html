@@ -4,3 +4,35 @@ https://prototype-kit.service.gov.uk/docs/how-to-use-layouts
 #}
 
 {% extends "govuk-prototype-kit/layouts/govuk-branded.njk" %}
+
+{% from "govuk/components/service-navigation/macro.njk" import govukServiceNavigation %}
+
+{% block govukServiceNavigation %}
+  <div class="govuk-!-display-none-print">
+    {{ govukServiceNavigation({
+      serviceName: serviceName,
+      serviceUrl: serviceUrl,
+      navigation: mshNavigation(currentSection)
+    }) }}
+  </div>
+{% endblock %}
+
+{# OFFICIAL classification banner — shown on screen and in print, mirroring the real
+   monthly report's own cover-page marking, since this prototype pulls genuine
+   OFFICIAL-classified live data from MSH. #}
+{% block beforeContent %}
+  <div class="official-banner">OFFICIAL</div>
+{% endblock %}
+
+{% block content %}{% endblock %}
+
+{% block footer %}
+  {{ super() }}
+  <div class="govuk-width-container">
+    <p class="govuk-body-s official-handling-note">
+      OFFICIAL — for UK Government, international partners and named UK organisations only.
+      Prototype using live MSH data: do not distribute outside this demonstration.
+    </p>
+  </div>
+  <div class="official-banner">OFFICIAL</div>
+{% endblock %}

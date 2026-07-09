@@ -1,0 +1,9 @@
+{
+  "alertCount": 8,
+  "delta": "- 14 (64%)",
+  "donut": [
+    { "label": "Minor – Moderate Level Alert", "value": 7 },
+    { "label": "Strong Level Alert", "value": 1 },
+    { "label": "Severe – Extreme Level Alert", "value": 0 }
+  ]
+}

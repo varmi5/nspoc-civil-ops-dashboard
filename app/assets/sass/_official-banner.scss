@@ -1,0 +1,15 @@
+.official-banner {
+  background-color: govuk-colour("black");
+  color: govuk-colour("white");
+  text-align: center;
+  font-weight: bold;
+  letter-spacing: 2px;
+  padding: 2px 0;
+  margin: govuk-spacing(4) 0;
+}
+
+.official-handling-note {
+  color: govuk-colour("black", $variant: "tint-25");
+  border-top: 1px solid govuk-functional-colour(border);
+  padding-top: govuk-spacing(3);
+}

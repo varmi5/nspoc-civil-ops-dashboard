@@ -1,20 +1,43 @@
 {% extends "layouts/main.html" %}
 
-{% set pageName="Home" %}
+{% set currentSection = "monthly-overview" %}
+{% set pageName = "Monthly Overview" %}
+
+{% from "macros/kpi-tile.njk" import kpiTile %}
+{% from "macros/donut-chart.njk" import donutChart %}
+{% from "macros/badge.njk" import mshBadge %}
+{% from "macros/print-link.njk" import printLink %}
 
 {% block content %}
 
 <div class="govuk-grid-row">
   <div class="govuk-grid-column-two-thirds">
-
-    {% include "govuk-prototype-kit/includes/homepage-top.njk" %}
-
-    <h1 class="govuk-heading-xl">
-      {{ serviceName }}
-    </h1>
-
-    {% include "govuk-prototype-kit/includes/homepage-bottom.njk" %}
+    <h1 class="govuk-heading-xl">Monthly Overview</h1>
   </div>
+  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
+    {{ printLink() }}
+  </div>
+</div>
+
+<div class="msh-kpi-grid">
+  {% for tile in viewModel.tiles %}
+    {{ kpiTile(tile) }}
+  {% endfor %}
+</div>
+
+<h2 class="govuk-heading-l">Data analysis (reporting period)</h2>
+<div class="govuk-grid-row">
+  {% for donutItem in viewModel.donuts %}
+    <div class="govuk-grid-column-one-half">
+      {{ mshBadge(donutItem.isLive) }}
+      {% if donutItem.href %}
+        {{ donutChart(donutItem.title, donutItem.chart) }}
+        <p class="govuk-body"><a class="govuk-link" href="{{ donutItem.href }}">View {{ donutItem.title }} detail</a></p>
+      {% else %}
+        {{ donutChart(donutItem.title, donutItem.chart) }}
+      {% endif %}
+    </div>
+  {% endfor %}
 </div>
 
 {% endblock %}

@@ -1,0 +1,19 @@
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{#
+Risk fields on a reentry/conjunction/fragmentation event are null until an analyst has
+closed out the event — that's shown honestly as "Pending analysis" rather than guessed.
+#}
+{% macro riskTag(risk) %}
+  {% if risk == "Low" %}
+    {{ govukTag({ text: risk, classes: "govuk-tag--green" }) }}
+  {% elif risk == "Medium" %}
+    {{ govukTag({ text: risk, classes: "govuk-tag--yellow" }) }}
+  {% elif risk == "High" or risk == "Critical" %}
+    {{ govukTag({ text: risk, classes: "govuk-tag--red" }) }}
+  {% elif risk %}
+    {{ govukTag({ text: risk, classes: "govuk-tag--grey" }) }}
+  {% else %}
+    {{ govukTag({ text: "Pending analysis", classes: "govuk-tag--grey" }) }}
+  {% endif %}
+{% endmacro %}

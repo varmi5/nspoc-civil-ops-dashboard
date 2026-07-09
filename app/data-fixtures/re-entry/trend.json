@@ -1,0 +1,14 @@
+[
+  { "month": "2025-08", "count": 51, "alert_count": 9 },
+  { "month": "2025-09", "count": 39, "alert_count": 6 },
+  { "month": "2025-10", "count": 44, "alert_count": 10 },
+  { "month": "2025-11", "count": 55, "alert_count": 7 },
+  { "month": "2025-12", "count": 49, "alert_count": 6 },
+  { "month": "2026-01", "count": 53, "alert_count": 8 },
+  { "month": "2026-02", "count": 56, "alert_count": 5 },
+  { "month": "2026-03", "count": 68, "alert_count": 9 },
+  { "month": "2026-04", "count": 70, "alert_count": 5 },
+  { "month": "2026-05", "count": 57, "alert_count": 17 },
+  { "month": "2026-06", "count": 72, "alert_count": 35 },
+  { "month": "2026-07", "count": 32, "alert_count": 2 }
+]

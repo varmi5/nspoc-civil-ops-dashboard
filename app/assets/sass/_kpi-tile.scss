@@ -1,0 +1,54 @@
+.msh-kpi-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: govuk-spacing(3);
+  margin-bottom: govuk-spacing(6);
+}
+
+.msh-kpi-tile {
+  flex: 1 1 150px;
+  border: 1px solid govuk-functional-colour(border);
+  padding: govuk-spacing(3);
+  text-align: center;
+  text-decoration: none;
+  color: govuk-functional-colour(text);
+
+  &:hover,
+  &:focus {
+    background-color: govuk-colour("black", $variant: "tint-95");
+  }
+}
+
+.msh-kpi-tile__label {
+  display: block;
+  @include govuk-font($size: 16);
+  min-height: 2.5em;
+}
+
+.msh-kpi-tile__value {
+  display: block;
+  @include govuk-font($size: 36, $weight: bold);
+  margin: govuk-spacing(1) 0;
+}
+
+.msh-kpi-tile__delta {
+  display: block;
+  @include govuk-font($size: 16);
+}
+
+.msh-kpi-tile__delta--up {
+  color: govuk-colour("green");
+}
+
+.msh-kpi-tile__delta--down {
+  color: govuk-colour("red");
+}
+
+.msh-kpi-tile__delta--neutral {
+  color: govuk-colour("black", $variant: "tint-25");
+}
+
+.msh-kpi-tile__badge {
+  display: block;
+  margin-top: govuk-spacing(2);
+}

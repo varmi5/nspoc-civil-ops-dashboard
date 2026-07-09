@@ -1,0 +1,5 @@
+[
+  { "short_id": "SAMPLE-1", "report_number": null, "additional_analysis": null, "user_interest": "Low" },
+  { "short_id": "SAMPLE-2", "report_number": null, "additional_analysis": "Under review", "user_interest": "Medium" },
+  { "short_id": "SAMPLE-3", "report_number": 1, "additional_analysis": "Closed, no incident", "user_interest": "High" }
+]

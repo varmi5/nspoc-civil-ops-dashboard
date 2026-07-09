@@ -1,0 +1,84 @@
+// Fixed palette shared between the SVG donut segments and their legend swatches, so a
+// segment and its label are always identifiable even without colour (screen readers and
+// print already get the real value via the legend text, not the colour).
+$msh-chart-palette: (
+  "blue",
+  "green",
+  "orange",
+  "red",
+  "purple",
+  "teal",
+  "black-tint-95",
+  "black-tint-25"
+);
+
+@function msh-chart-colour($token) {
+  @if $token == "black-tint-95" {
+    @return govuk-colour("black", $variant: "tint-95");
+  } @else if $token == "black-tint-25" {
+    @return govuk-colour("black", $variant: "tint-25");
+  } @else if $token == "teal" {
+    @return govuk-colour("teal", $variant: "primary");
+  }
+  @return govuk-colour($token);
+}
+
+.msh-donut-chart {
+  display: flex;
+  align-items: center;
+  gap: govuk-spacing(4);
+  flex-wrap: wrap;
+  margin-bottom: govuk-spacing(6);
+}
+
+.msh-donut-chart__figure {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.msh-donut-chart__title {
+  @include govuk-font($size: 19, $weight: bold);
+  margin-bottom: govuk-spacing(2);
+}
+
+.msh-donut-chart__legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.msh-donut-chart__legend-item {
+  display: flex;
+  align-items: baseline;
+  gap: govuk-spacing(2);
+  margin-bottom: govuk-spacing(1);
+}
+
+.msh-donut-chart__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.msh-donut-chart__track {
+  stroke: govuk-colour("black", $variant: "tint-95");
+}
+
+.msh-donut-chart__empty {
+  color: govuk-colour("black", $variant: "tint-25");
+  font-style: italic;
+}
+
+@each $colour in $msh-chart-palette {
+  $index: index($msh-chart-palette, $colour) - 1;
+
+  .msh-donut-chart__segment--#{$index} {
+    stroke: msh-chart-colour($colour);
+  }
+
+  .msh-donut-chart__swatch--#{$index} {
+    background-color: msh-chart-colour($colour);
+  }
+}

@@ -1,0 +1,9 @@
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+
+{% macro mshBadge(isLive) %}
+  {% if isLive %}
+    {{ govukTag({ text: "Live from MSH API", classes: "govuk-tag--green" }) }}
+  {% else %}
+    {{ govukTag({ text: "Sample data — no confirmed source", classes: "govuk-tag--grey" }) }}
+  {% endif %}
+{% endmacro %}

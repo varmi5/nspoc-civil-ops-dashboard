@@ -1,0 +1,99 @@
+{% extends "layouts/main.html" %}
+
+{% set currentSection = "re-entry" %}
+{% set pageName = viewModel.objectName %}
+
+{% from "macros/badge.njk" import mshBadge %}
+{% from "macros/risk-tag.njk" import riskTag %}
+{% from "macros/print-link.njk" import printLink %}
+
+{% block content %}
+
+<a class="govuk-back-link" href="/re-entry">Back to Re-Entry</a>
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    <h1 class="govuk-heading-xl">{{ viewModel.objectName }}</h1>
+  </div>
+  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
+    {{ mshBadge(viewModel.isLive) }}
+    {{ printLink() }}
+  </div>
+</div>
+
+<h2 class="govuk-heading-l">Licence and object information</h2>
+<dl class="govuk-summary-list">
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">Object type</dt>
+    <dd class="govuk-summary-list__value">{{ viewModel.objectType }}</dd>
+  </div>
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">Licensing country</dt>
+    <dd class="govuk-summary-list__value">{{ viewModel.licenseCountry }}</dd>
+  </div>
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">International designator</dt>
+    <dd class="govuk-summary-list__value">{{ viewModel.internationalDesignator }}</dd>
+  </div>
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">Estimated mass</dt>
+    <dd class="govuk-summary-list__value">{{ viewModel.mass }}</dd>
+  </div>
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">Risk rating</dt>
+    <dd class="govuk-summary-list__value">{{ riskTag(viewModel.risk) }}</dd>
+  </div>
+</dl>
+
+<h2 class="govuk-heading-l">Orbital information</h2>
+<dl class="govuk-summary-list">
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">Apogee</dt>
+    <dd class="govuk-summary-list__value">{{ viewModel.apogee }}</dd>
+  </div>
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">Perigee</dt>
+    <dd class="govuk-summary-list__value">{{ viewModel.perigee }}</dd>
+  </div>
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">Inclination</dt>
+    <dd class="govuk-summary-list__value">{{ viewModel.inclination }}</dd>
+  </div>
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">Predicted decay time</dt>
+    <dd class="govuk-summary-list__value">{{ viewModel.decayEpoch }}</dd>
+  </div>
+  <div class="govuk-summary-list__row">
+    <dt class="govuk-summary-list__key">Predicted final re-entry location</dt>
+    <dd class="govuk-summary-list__value">{{ viewModel.predictedLocation }}</dd>
+  </div>
+</dl>
+
+<h2 class="govuk-heading-l">Re-entry prediction history (TIP messages)</h2>
+<p class="govuk-body">Each row is a Tracking and Impact Prediction (TIP) message — the prediction narrows as more tracking data comes in closer to decay.</p>
+
+<table class="govuk-table">
+  <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Re-entry prediction history</caption>
+  <thead class="govuk-table__head">
+    <tr class="govuk-table__row">
+      <th scope="col" class="govuk-table__header">Reported</th>
+      <th scope="col" class="govuk-table__header">Predicted Decay</th>
+      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Uncertainty Window (mins)</th>
+      <th scope="col" class="govuk-table__header">Predicted Location</th>
+      <th scope="col" class="govuk-table__header">Source</th>
+    </tr>
+  </thead>
+  <tbody class="govuk-table__body">
+    {% for entry in viewModel.reentryHistory %}
+      <tr class="govuk-table__row">
+        <td class="govuk-table__cell">{{ entry.reportedAt }}</td>
+        <td class="govuk-table__cell">{{ entry.predictedDecay }}</td>
+        <td class="govuk-table__cell govuk-table__cell--numeric">{{ entry.uncertaintyWindowMinutes }}</td>
+        <td class="govuk-table__cell">{{ entry.location }}</td>
+        <td class="govuk-table__cell">{{ entry.source }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

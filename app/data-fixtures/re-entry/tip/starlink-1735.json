@@ -1,0 +1,16 @@
+{
+  "norad_id": "44730",
+  "short_id": "RE00-0099",
+  "object_name": "STARLINK-1735",
+  "object_type": "PAYLOAD",
+  "estimated_mass": 260,
+  "license_country": "US",
+  "international_designator": "2019-074A",
+  "apogee": 355,
+  "perigee": 340,
+  "inclination": 53,
+  "decay_epoch": "2026-05-20T00:00:00",
+  "atmospheric_risk": "Low",
+  "human_casualty_risk": "Low",
+  "fragments_risk": null
+}

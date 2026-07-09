@@ -1,0 +1,7 @@
+{
+  "donut": [
+    { "label": "Service Online", "value": 8 },
+    { "label": "Service Outage", "value": 1 },
+    { "label": "Service Offline", "value": 0 }
+  ]
+}

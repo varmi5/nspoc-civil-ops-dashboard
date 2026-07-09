@@ -1,0 +1,40 @@
+{#
+Renders the object returned by app/lib/charts/donut.js as an accessible SVG donut plus a
+legend list. The legend is the real text alternative (screen readers and print both rely
+on it) — colour is decoration, never the only way to read a value.
+#}
+{% macro donutChart(title, chart) %}
+  <div class="msh-donut-chart">
+    <figure class="msh-donut-chart__figure">
+      {% if chart.total > 0 %}
+        <svg width="120" height="120" viewBox="0 0 36 36" role="img" aria-label="{{ title }} — see the list below for exact values">
+          <circle cx="18" cy="18" r="{{ chart.radius }}" fill="none" stroke-width="3.8" class="msh-donut-chart__track"></circle>
+          {% for segment in chart.segments %}
+            <circle
+              cx="18" cy="18" r="{{ chart.radius }}" fill="none" stroke-width="3.8"
+              class="msh-donut-chart__segment msh-donut-chart__segment--{{ segment.colourIndex }}"
+              stroke-dasharray="{{ segment.dashArray }}"
+              stroke-dashoffset="{{ segment.dashOffset }}"
+              transform="rotate(-90 18 18)"
+            ></circle>
+          {% endfor %}
+        </svg>
+      {% else %}
+        <p class="msh-donut-chart__empty">No data available this reporting period</p>
+      {% endif %}
+    </figure>
+    <div>
+      <p class="msh-donut-chart__title">{{ title }}</p>
+      {% if chart.total > 0 %}
+        <ul class="msh-donut-chart__legend">
+          {% for segment in chart.segments %}
+            <li class="msh-donut-chart__legend-item">
+              <span class="msh-donut-chart__swatch msh-donut-chart__swatch--{{ segment.colourIndex }}"></span>
+              <span>{{ segment.label }}: {{ segment.value }} ({{ segment.percent }}%)</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+{% endmacro %}

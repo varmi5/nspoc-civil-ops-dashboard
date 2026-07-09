@@ -1,0 +1,85 @@
+{% extends "layouts/main.html" %}
+
+{% set currentSection = "re-entry" %}
+{% set pageName = "Re-Entry" %}
+
+{% from "macros/badge.njk" import mshBadge %}
+{% from "macros/kpi-tile.njk" import kpiTile %}
+{% from "macros/donut-chart.njk" import donutChart %}
+{% from "macros/risk-tag.njk" import riskTag %}
+{% from "macros/print-link.njk" import printLink %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    <h1 class="govuk-heading-xl">Re-Entry Early Warning</h1>
+  </div>
+  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
+    {{ mshBadge(viewModel.isLive) }}
+    {{ printLink() }}
+  </div>
+</div>
+
+<div class="msh-kpi-grid">
+  {{ kpiTile({ label: "Uncontrolled Re-Entries Tracked (reporting period)", value: viewModel.stats.reentry_event_total_count }) }}
+  {{ kpiTile({ label: "Re-Entry Alerts Issued (reporting period)", value: viewModel.stats.reentry_event_alert_count }) }}
+  {{ kpiTile({ label: "Objects Analysed for Risk", value: viewModel.analysedCount, unit: "of " + viewModel.totalCount + " tracked" }) }}
+</div>
+
+<h2 class="govuk-heading-l">Number of re-entries tracked, last 12 months</h2>
+<table class="govuk-table">
+  <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Monthly re-entries tracked vs alerts issued</caption>
+  <thead class="govuk-table__head">
+    <tr class="govuk-table__row">
+      <th scope="col" class="govuk-table__header">Month</th>
+      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Re-Entries Tracked</th>
+      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Alerts Issued</th>
+    </tr>
+  </thead>
+  <tbody class="govuk-table__body">
+    {% for month in viewModel.trend %}
+      <tr class="govuk-table__row">
+        <td class="govuk-table__cell">{{ month.month }}</td>
+        <td class="govuk-table__cell govuk-table__cell--numeric">{{ month.count }}</td>
+        <td class="govuk-table__cell govuk-table__cell--numeric">{{ month.alertCount }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2 class="govuk-heading-l">Data analysis (reporting period)</h2>
+{{ donutChart("Object Types", viewModel.objectTypeDonut) }}
+
+<h2 class="govuk-heading-l">Tracked objects</h2>
+<p class="govuk-body">Select an object name to see its full Tracking and Impact Prediction (TIP) detail, including re-entry history.</p>
+
+<table class="govuk-table">
+  <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Tracked re-entry objects</caption>
+  <thead class="govuk-table__head">
+    <tr class="govuk-table__row">
+      <th scope="col" class="govuk-table__header">Object Type</th>
+      <th scope="col" class="govuk-table__header">Object Name</th>
+      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Mass</th>
+      <th scope="col" class="govuk-table__header">Date</th>
+      <th scope="col" class="govuk-table__header">Risk Rating</th>
+      <th scope="col" class="govuk-table__header">Predicted Final Re-Entry Location</th>
+    </tr>
+  </thead>
+  <tbody class="govuk-table__body">
+    {% for row in viewModel.rows %}
+      <tr class="govuk-table__row">
+        <td class="govuk-table__cell">{{ row.objectType }}</td>
+        <td class="govuk-table__cell">
+          <a class="govuk-link" href="/re-entry/{{ row.noradId }}">{{ row.objectName }}</a>
+        </td>
+        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.mass }}</td>
+        <td class="govuk-table__cell">{{ row.date }}</td>
+        <td class="govuk-table__cell">{{ riskTag(row.risk) }}</td>
+        <td class="govuk-table__cell">{{ row.location }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

@@ -1,0 +1,16 @@
+// "Print this page" link (GOV.UK's own established pattern) — hidden until JavaScript
+// confirms window.print() is available, then hidden again specifically when printing so
+// the link itself never appears in the printed/exported output.
+.msh-print-link--hidden {
+  display: none;
+}
+
+// Keeps KPI tiles, donut charts and table rows from splitting across a page break when a
+// page is printed/exported as PDF — matches how the real monthly report is circulated.
+@media print {
+  .msh-kpi-tile,
+  .msh-donut-chart,
+  .govuk-table__row {
+    break-inside: avoid;
+  }
+}
