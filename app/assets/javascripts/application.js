@@ -11,4 +11,8 @@ window.GOVUKPrototypeKit.documentReady(() => {
       window.print()
     })
   })
+
+  document.querySelectorAll('.js-month-selector').forEach((select) => {
+    select.addEventListener('change', () => select.form.submit())
+  })
 })

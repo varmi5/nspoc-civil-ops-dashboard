@@ -1,0 +1,5 @@
+[
+  { "object_type": "PAYLOAD", "month": "2026-05", "count": 3 },
+  { "object_type": "ROCKET BODY", "month": "2026-05", "count": 1 },
+  { "object_type": "DEBRIS", "month": "2026-05", "count": 44 }
+]

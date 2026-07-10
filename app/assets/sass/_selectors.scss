@@ -1,0 +1,44 @@
+.msh-period-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: govuk-spacing(1);
+  margin-bottom: govuk-spacing(4);
+}
+
+.msh-period-selector__link {
+  display: inline-block;
+  padding: govuk-spacing(1) govuk-spacing(3);
+  border: 1px solid govuk-functional-colour(border);
+  color: govuk-functional-colour(link);
+  text-decoration: none;
+
+  &:hover {
+    background-color: govuk-colour("black", $variant: "tint-95");
+  }
+}
+
+.msh-period-selector__link--current {
+  background-color: govuk-colour("blue");
+  border-color: govuk-colour("blue");
+  color: govuk-colour("white");
+  font-weight: bold;
+
+  &:hover {
+    background-color: govuk-colour("blue");
+  }
+}
+
+.msh-month-selector {
+  display: flex;
+  align-items: flex-end;
+  gap: govuk-spacing(2);
+  margin-bottom: govuk-spacing(4);
+
+  .govuk-form-group {
+    margin-bottom: 0;
+  }
+}
+
+.msh-month-selector__submit {
+  margin-bottom: 0;
+}

@@ -13,7 +13,7 @@ const { buildMonthlyOverviewViewModel } = require('./lib/view-models/monthly-ove
 
 router.get('/', async (req, res, next) => {
   try {
-    const viewModel = await buildMonthlyOverviewViewModel()
+    const viewModel = await buildMonthlyOverviewViewModel(req.query.month)
     res.render('index', { viewModel })
   } catch (err) {
     next(err)
@@ -22,7 +22,7 @@ router.get('/', async (req, res, next) => {
 
 router.get('/re-entry', async (req, res, next) => {
   try {
-    const viewModel = await buildReEntryViewModel()
+    const viewModel = await buildReEntryViewModel(req.query.months)
     res.render('re-entry/index', { viewModel })
   } catch (err) {
     next(err)

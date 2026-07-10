@@ -9,6 +9,8 @@
 {% from "macros/risk-tag.njk" import riskTag %}
 {% from "macros/print-link.njk" import printLink %}
 {% from "macros/month-strip.njk" import monthStrip %}
+{% from "macros/period-selector.njk" import periodSelector %}
+{% from "macros/explainer.njk" import explainer %}
 
 {% block content %}
 
@@ -23,13 +25,19 @@
 </div>
 
 <div class="msh-kpi-grid">
-  {{ kpiTile({ label: "Uncontrolled Re-Entries Tracked (reporting period)", value: viewModel.stats.reentry_event_total_count }) }}
-  {{ kpiTile({ label: "Re-Entry Alerts Issued (reporting period)", value: viewModel.stats.reentry_event_alert_count }) }}
-  {{ kpiTile({ label: "Objects Analysed for Risk", value: viewModel.analysedCount, unit: "of " + viewModel.totalCount + " tracked" }) }}
+  {{ kpiTile({ label: "Uncontrolled Re-Entries Tracked (last " + viewModel.trendMonths + " month" + ("s" if viewModel.trendMonths != 1) + ")", value: viewModel.periodTotalCount }) }}
+  {{ kpiTile({ label: "Re-Entry Alerts Issued (last " + viewModel.trendMonths + " month" + ("s" if viewModel.trendMonths != 1) + ")", value: viewModel.periodAlertCount }) }}
+  {{ kpiTile({ label: "Objects Analysed for Risk (current snapshot)", value: viewModel.analysedCount, unit: "of " + viewModel.totalCount + " tracked" }) }}
 </div>
 
-<h2 class="govuk-heading-l">Number of re-entries tracked, last 12 months</h2>
-<p class="govuk-body-s msh-month-strip__scroll-hint">Scroll right to see all 12 months →</p>
+{{ explainer("What do these figures mean, and where do they come from?", "
+  <p class='govuk-body'>Figures marked <strong>Live from MSH API</strong> are fetched directly from the Monitor Space Hazards service each time this page loads. Figures marked <strong>Sample data</strong> are illustrative placeholders because no confirmed live source exists for that figure yet.</p>
+  <p class='govuk-body'>“Objects Analysed for Risk” counts objects where an analyst has completed a risk assessment (atmospheric, human casualty or fragments risk). Most currently-tracked objects show <strong>Pending analysis</strong> because that review normally happens closer to, or after, the predicted re-entry date.</p>
+") }}
+
+<h2 class="govuk-heading-l">Number of re-entries tracked</h2>
+{{ periodSelector("/re-entry", viewModel.trendMonths, viewModel.trendPeriods, "months", "month") }}
+<p class="govuk-body-s msh-month-strip__scroll-hint">Scroll right to see all {{ viewModel.trendMonths }} months →</p>
 {{ monthStrip(viewModel.trend) }}
 
 <h2 class="govuk-heading-l">Data analysis (reporting period)</h2>

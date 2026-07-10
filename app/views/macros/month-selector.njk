@@ -1,0 +1,21 @@
+{% from "govuk/components/select/macro.njk" import govukSelect %}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{#
+A GET form with a native <select> of recent months. The "View" button always works (no
+JS required); application.js progressively enhances the select to auto-submit on change,
+so JS users rarely need to click it.
+#}
+{% macro monthSelector(basePath, currentValue, options) %}
+  <form method="get" action="{{ basePath }}" class="msh-month-selector">
+    {{ govukSelect({
+      id: "month",
+      name: "month",
+      label: { text: "Reporting month" },
+      items: options,
+      value: currentValue,
+      classes: "js-month-selector"
+    }) }}
+    {{ govukButton({ text: "View", classes: "msh-month-selector__submit" }) }}
+  </form>
+{% endmacro %}

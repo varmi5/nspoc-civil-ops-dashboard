@@ -7,17 +7,22 @@
 {% from "macros/donut-chart.njk" import donutChart %}
 {% from "macros/badge.njk" import mshBadge %}
 {% from "macros/print-link.njk" import printLink %}
+{% from "macros/month-selector.njk" import monthSelector %}
+{% from "macros/explainer.njk" import explainer %}
 
 {% block content %}
 
 <div class="govuk-grid-row">
   <div class="govuk-grid-column-two-thirds">
     <h1 class="govuk-heading-xl">Monthly Overview</h1>
+    <p class="govuk-body-l">{{ viewModel.selectedMonthLabel }}</p>
   </div>
   <div class="govuk-grid-column-one-third govuk-!-text-align-right">
     {{ printLink() }}
   </div>
 </div>
+
+{{ monthSelector("/", viewModel.selectedMonth, viewModel.monthOptions) }}
 
 <div class="msh-kpi-grid">
   {% for tile in viewModel.tiles %}
@@ -25,7 +30,13 @@
   {% endfor %}
 </div>
 
-<h2 class="govuk-heading-l">Data analysis (reporting period)</h2>
+{{ explainer("What do these figures mean, and where do they come from?", "
+  <p class='govuk-body'>Figures marked <strong>Live from MSH API</strong> are fetched directly from the Monitor Space Hazards service for the reporting month selected above. Figures marked <strong>Sample data</strong> are illustrative placeholders because no confirmed live source exists for that figure yet.</p>
+  <p class='govuk-body'>“Collision Alerts from NSpOC” counts only conjunction events in the highest collision-probability band (greater than 1 in 1,000) as a proxy for alert-worthy events, since MSH does not publish a dedicated monthly alert count for collisions the way it does for re-entries.</p>
+  <p class='govuk-body'>“Collision Risks to UK Satellites” currently counts all tracked conjunction events for the month, not only UK-licensed satellites, since no UK-specific filter was confirmed on this endpoint.</p>
+") }}
+
+<h2 class="govuk-heading-l">Data analysis ({{ viewModel.selectedMonthLabel }})</h2>
 <div class="govuk-grid-row">
   {% for donutItem in viewModel.donuts %}
     <div class="govuk-grid-column-one-third">

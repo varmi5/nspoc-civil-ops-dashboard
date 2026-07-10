@@ -3,6 +3,15 @@ const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
 const { highestRisk } = require('../format-risk')
 const { formatDate, formatDateTime, formatMonth } = require('../format-date')
+const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths } = require('../date-range')
+
+const ALLOWED_TREND_PERIODS = [1, 3, 6, 12, 24]
+const DEFAULT_TREND_PERIOD = 12
+
+function resolveTrendPeriod (requestedMonths) {
+  const parsed = Number(requestedMonths)
+  return ALLOWED_TREND_PERIODS.includes(parsed) ? parsed : DEFAULT_TREND_PERIOD
+}
 
 function bucketObjectType (objectType) {
   const type = (objectType || '').toUpperCase()
@@ -39,13 +48,11 @@ async function fetchReentryList () {
   return mshRequest('/v1/reentry-events/')
 }
 
-async function fetchStats () {
-  return mshRequest('/v1/reentry-events/stats')
-}
-
-async function fetchMonthlyTrend () {
-  const rows = await mshRequest('/v1/stats/monthly/reentry-events')
-  return rows.slice(-12)
+async function fetchMonthlyTrend (months) {
+  const end = currentMonth()
+  const start = shiftMonths(end, -(months - 1))
+  const url = `/v1/stats/monthly/reentry-events?start_date=${toDateString(startOfMonth(start))}&end_date=${toDateString(endOfMonth(end))}`
+  return mshRequest(url)
 }
 
 async function fetchTipsForNoradId (noradId) {
@@ -69,12 +76,23 @@ async function attachLatestLocation (event, listIsLive) {
   }
 }
 
-async function buildReEntryViewModel () {
-  const [listResult, statsResult, trendResult] = await Promise.all([
+async function buildReEntryViewModel (requestedMonths) {
+  const months = resolveTrendPeriod(requestedMonths)
+
+  const [listResult, trendResult] = await Promise.all([
     getSectionData('re-entry', { liveFetcher: fetchReentryList, fixturePath: 're-entry/objects.json' }),
-    getSectionData('re-entry', { liveFetcher: fetchStats, fixturePath: 're-entry/summary.json' }),
-    getSectionData('re-entry', { liveFetcher: fetchMonthlyTrend, fixturePath: 're-entry/trend.json' })
+    getSectionData('re-entry', { liveFetcher: () => fetchMonthlyTrend(months), fixturePath: 're-entry/trend.json' })
   ])
+
+  // Fixture data is a fixed 12-month sample — trim it to match whatever period was
+  // requested so the fallback view stays visually consistent with the live one.
+  const trendRows = trendResult.isLive ? trendResult.data : trendResult.data.slice(-months)
+
+  // The KPI tiles above the trend strip summarise the SAME selected period, rather than
+  // a separately-scoped "lifetime" stats call — otherwise the tiles and the strip below
+  // them could show inconsistent, confusing numbers for what looks like one figure.
+  const periodTotalCount = trendRows.reduce((sum, row) => sum + row.count, 0)
+  const periodAlertCount = trendRows.reduce((sum, row) => sum + row.alert_count, 0)
 
   const enrichedEvents = await Promise.all(
     listResult.data.map((event) => attachLatestLocation(event, listResult.isLive))
@@ -98,13 +116,16 @@ async function buildReEntryViewModel () {
   const analysedRows = rows.filter((row) => row.risk !== null)
 
   return {
-    isLive: listResult.isLive && statsResult.isLive && trendResult.isLive,
-    stats: statsResult.data,
-    trend: trendResult.data.map((row) => ({
+    isLive: listResult.isLive && trendResult.isLive,
+    periodTotalCount,
+    periodAlertCount,
+    trend: trendRows.map((row) => ({
       month: formatMonth(row.month),
       count: row.count,
       alertCount: row.alert_count
     })),
+    trendMonths: months,
+    trendPeriods: ALLOWED_TREND_PERIODS,
     rows,
     analysedCount: analysedRows.length,
     totalCount: rows.length,

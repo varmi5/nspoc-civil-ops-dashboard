@@ -1,0 +1,17 @@
+{#
+Renders a row of plain links (one per option), each a normal GET request that reloads the
+page with a new query param value — no client-side state, works without JavaScript,
+bookmarkable. The active option gets aria-current="true" plus a highlighted style.
+#}
+{% macro periodSelector(basePath, currentValue, options, paramName, unitLabel) %}
+  <div class="msh-period-selector" role="group" aria-label="Choose time period">
+    {% for option in options %}
+      {% set isCurrent = option == currentValue %}
+      <a
+        class="msh-period-selector__link{{ ' msh-period-selector__link--current' if isCurrent }}"
+        href="{{ basePath }}?{{ paramName }}={{ option }}"
+        {%- if isCurrent %} aria-current="true"{% endif %}
+      >{{ option }} {{ unitLabel }}{{ "s" if option != 1 }}</a>
+    {% endfor %}
+  </div>
+{% endmacro %}
