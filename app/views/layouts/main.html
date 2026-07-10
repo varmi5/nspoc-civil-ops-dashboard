@@ -22,6 +22,10 @@ https://prototype-kit.service.gov.uk/docs/how-to-use-layouts
    OFFICIAL-classified live data from MSH. #}
 {% block beforeContent %}
   <div class="official-banner">OFFICIAL</div>
+  {# Lives outside #main-content so it survives the fast-nav content swap in
+     application.js — announces when a period/month filter finishes updating, since
+     that swap intentionally doesn't move focus or scroll (see initFastNav). #}
+  <p id="msh-fast-nav-status" class="govuk-visually-hidden" aria-live="polite" aria-atomic="true"></p>
 {% endblock %}
 
 {% block content %}{% endblock %}

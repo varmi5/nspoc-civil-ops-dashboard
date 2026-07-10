@@ -23,12 +23,26 @@ $msh-chart-palette: (
   @return govuk-colour($token);
 }
 
+// A bordered card per donut (matching the KPI tile style) gives each chart a clear
+// boundary, so adjacent items never read as touching/overlapping even when their ring
+// and legend wrap onto separate lines in a narrow column.
+.msh-donut-chart-card {
+  border: 1px solid govuk-functional-colour(border);
+  padding: govuk-spacing(3);
+  margin-bottom: govuk-spacing(4);
+}
+
+.msh-donut-chart-card__badge {
+  display: block;
+  margin-bottom: govuk-spacing(3);
+}
+
 .msh-donut-chart {
   display: flex;
   align-items: center;
   gap: govuk-spacing(4);
   flex-wrap: wrap;
-  margin-bottom: govuk-spacing(6);
+  margin-bottom: 0;
 }
 
 .msh-donut-chart__figure {
