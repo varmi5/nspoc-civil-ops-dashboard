@@ -1,0 +1,29 @@
+{% extends "layouts/present.html" %}
+{% set bodyClasses = "present-mode" %}
+{% set pageName = "Present — Monthly Overview" %}
+
+{% from "macros/present-controls.njk" import presentControls %}
+{% from "macros/kpi-tile.njk" import kpiTile %}
+{% from "macros/donut-chart.njk" import donutChart %}
+
+{% block content %}
+  {{ presentControls(nav) }}
+  <div class="msh-present-slide">
+    <h1 class="msh-present-slide__title">Monthly Overview</h1>
+    <p class="msh-present-slide__subtitle">{{ viewModel.selectedMonthLabel }}</p>
+
+    <div class="msh-kpi-grid msh-present-slide__kpi-grid">
+      {% for tile in viewModel.tiles %}
+        {{ kpiTile(tile) }}
+      {% endfor %}
+    </div>
+
+    <div class="govuk-grid-row">
+      {% for donutItem in viewModel.donuts %}
+        <div class="govuk-grid-column-one-third">
+          {{ donutChart(donutItem.title, donutItem.chart) }}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}

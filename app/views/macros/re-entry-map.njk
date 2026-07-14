@@ -1,0 +1,40 @@
+{#
+Self-drawn SVG graticule (lat/long grid) map — not a coastline map, since there's no
+licensed coastline dataset in hand and sending real OFFICIAL-classified coordinates
+through a third-party map tile provider would leak query patterns to that provider. Each
+marker is a clickable/focusable SVG <a> with a native <title> tooltip and a full
+aria-label, so every marker is keyboard-Tab-able and Enter-activates without any custom
+ARIA or JS. `mapData` is the object returned by buildReEntryMapViewModel.
+#}
+{% macro reEntryMap(mapData) %}
+  <div class="msh-map" data-msh-map>
+    <div class="msh-map__controls govuk-!-display-none-print">
+      <button type="button" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-msh-map-zoom-in>Zoom in</button>
+      <button type="button" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-msh-map-zoom-out>Zoom out</button>
+      <button type="button" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-msh-map-reset>Reset view</button>
+    </div>
+    <div class="msh-map__viewport">
+      <svg viewBox="0 0 360 180" class="msh-map__svg" role="img" aria-label="Map of tracked re-entry object locations, {{ mapData.plottedCount }} plotted">
+        <rect x="0" y="0" width="360" height="180" class="msh-map__ocean"></rect>
+        <g class="msh-map__zoom-group" data-msh-map-zoom-group>
+          {% for meridian in mapData.graticule.meridians %}
+            <line x1="{{ meridian.x }}" y1="0" x2="{{ meridian.x }}" y2="180" class="msh-map__graticule-line{{ ' msh-map__graticule-line--emphasis' if meridian.isPrime }}"></line>
+          {% endfor %}
+          {% for parallel in mapData.graticule.parallels %}
+            <line x1="0" y1="{{ parallel.y }}" x2="360" y2="{{ parallel.y }}" class="msh-map__graticule-line{{ ' msh-map__graticule-line--emphasis' if parallel.isEquator }}"></line>
+          {% endfor %}
+          {% for marker in mapData.markers %}
+            <a
+              href="/re-entry/{{ marker.noradId }}"
+              class="msh-map__marker msh-map__marker--{{ (marker.risk | lower) if marker.risk else 'pending' }}"
+              aria-label="{{ marker.objectName }}, {{ marker.objectType }}, predicted decay {{ marker.decayDate }}, risk {{ marker.risk if marker.risk else 'pending analysis' }}, location {{ marker.location }}"
+            >
+              <title>{{ marker.objectName }} — {{ marker.location }}</title>
+              <circle cx="{{ marker.x }}" cy="{{ marker.y }}" r="1.8"></circle>
+            </a>
+          {% endfor %}
+        </g>
+      </svg>
+    </div>
+  </div>
+{% endmacro %}

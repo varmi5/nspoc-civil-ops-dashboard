@@ -25,4 +25,11 @@
   .msh-month-strip__scroll-hint {
     display: none;
   }
+
+  // Defeats a JS-applied inline transform from the map's pan/zoom controls, so a printed
+  // page always shows the full, un-zoomed/un-panned view — the one deliberate !important
+  // in this codebase, needed specifically to override an inline style attribute.
+  .msh-map__zoom-group {
+    transform: none !important;
+  }
 }

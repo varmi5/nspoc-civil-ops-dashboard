@@ -1,0 +1,34 @@
+{% extends "layouts/main.html" %}
+
+{% set currentSection = "summary" %}
+{% set pageName = "Summary" %}
+
+{% from "macros/print-link.njk" import printLink %}
+{% from "macros/month-selector.njk" import monthSelector %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    <h1 class="govuk-heading-xl">Summary</h1>
+    <p class="govuk-body-l">{{ viewModel.selectedMonthLabel }}</p>
+  </div>
+  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
+    {{ printLink() }}
+  </div>
+</div>
+
+{{ monthSelector("/summary", viewModel.selectedMonth, viewModel.monthOptions) }}
+
+<div class="govuk-inset-text">
+  This summary is generated automatically from the figures on the Monthly Overview page —
+  it is not written or reviewed by an analyst.
+</div>
+
+{% for sentence in summary.sentences %}
+  <p class="govuk-body-l">{{ sentence }}</p>
+{% endfor %}
+
+<p class="govuk-body"><a class="govuk-link" href="/">View the full Monthly Overview</a></p>
+
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "layouts/present.html" %}
+{% set bodyClasses = "present-mode" %}
+{% set pageName = "Present — Executive Summary" %}
+
+{% from "macros/present-controls.njk" import presentControls %}
+
+{% block content %}
+  {{ presentControls(nav) }}
+  <div class="msh-present-slide">
+    <h1 class="msh-present-slide__title">Executive Summary</h1>
+    <p class="msh-present-slide__subtitle">{{ summary.monthLabel }}</p>
+    {% for sentence in summary.sentences %}
+      <p class="msh-present-slide__body">{{ sentence }}</p>
+    {% endfor %}
+  </div>
+{% endblock %}

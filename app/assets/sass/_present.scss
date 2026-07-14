@@ -1,0 +1,53 @@
+body.present-mode {
+  .govuk-width-container {
+    max-width: none;
+    padding: 0 govuk-spacing(6);
+  }
+}
+
+.msh-present-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: govuk-spacing(4);
+  padding: govuk-spacing(2) 0;
+  border-bottom: 1px solid govuk-functional-colour(border);
+  margin-bottom: govuk-spacing(6);
+}
+
+.msh-present-controls__exit {
+  margin-right: auto;
+}
+
+.msh-present-controls__nav {
+  display: flex;
+  gap: govuk-spacing(3);
+}
+
+.msh-present-slide {
+  padding: govuk-spacing(4) 0 govuk-spacing(6);
+}
+
+.msh-present-slide__title {
+  @include govuk-font($size: 48, $weight: bold);
+  margin-bottom: govuk-spacing(2);
+}
+
+.msh-present-slide__subtitle {
+  @include govuk-font($size: 27);
+  color: govuk-colour("black", $variant: "tint-25");
+  margin-bottom: govuk-spacing(6);
+}
+
+.msh-present-slide__body {
+  @include govuk-font($size: 24);
+  margin-bottom: govuk-spacing(4);
+}
+
+.msh-present-slide__kpi-grid .msh-kpi-tile__value {
+  @include govuk-font($size: 48, $weight: bold);
+}
+
+.msh-present-slide__kpi-grid .msh-kpi-tile__label {
+  @include govuk-font($size: 19);
+}

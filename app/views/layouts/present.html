@@ -1,0 +1,19 @@
+{#
+Presentation Mode layout — extends govuk-branded.njk directly (not layouts/main.html), so
+it can drop the service navigation entirely and give a full-screen, chrome-free view for
+presenting live from a laptop. The OFFICIAL banner stays — the classification marking is
+non-negotiable even mid-presentation.
+#}
+{% extends "govuk-prototype-kit/layouts/govuk-branded.njk" %}
+
+{% block govukServiceNavigation %}{% endblock %}
+
+{% block beforeContent %}
+  <div class="official-banner">OFFICIAL</div>
+{% endblock %}
+
+{% block content %}{% endblock %}
+
+{% block footer %}
+  <div class="official-banner">OFFICIAL</div>
+{% endblock %}

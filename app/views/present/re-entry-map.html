@@ -1,0 +1,15 @@
+{% extends "layouts/present.html" %}
+{% set bodyClasses = "present-mode" %}
+{% set pageName = "Present — Re-Entry Map" %}
+
+{% from "macros/present-controls.njk" import presentControls %}
+{% from "macros/re-entry-map.njk" import reEntryMap %}
+
+{% block content %}
+  {{ presentControls(nav) }}
+  <div class="msh-present-slide">
+    <h1 class="msh-present-slide__title">Re-Entry Map</h1>
+    <p class="msh-present-slide__subtitle">{{ viewModel.plottedCount }} of {{ viewModel.totalCount }} tracked objects plotted</p>
+    {{ reEntryMap(viewModel) }}
+  </div>
+{% endblock %}

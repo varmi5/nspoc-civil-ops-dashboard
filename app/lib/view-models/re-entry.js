@@ -4,6 +4,8 @@ const { buildDonut } = require('../charts/donut')
 const { highestRisk } = require('../format-risk')
 const { formatDate, formatDateTime, formatMonth } = require('../format-date')
 const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths } = require('../date-range')
+const { normaliseLongitude, hasResolvedLocation } = require('../geo')
+const { projectPoint, buildGraticule } = require('../charts/world-projection')
 
 const ALLOWED_TREND_PERIODS = [1, 3, 6, 12, 24]
 const DEFAULT_TREND_PERIOD = 12
@@ -18,16 +20,6 @@ function bucketObjectType (objectType) {
   if (type.includes('ROCKET')) return 'Rocket Bodies'
   if (type === 'PAYLOAD') return 'Satellites'
   return 'Debris / Unknown'
-}
-
-// MSH returns longitude in a mix of -180..180 and 0..360 conventions depending on the
-// source feed — normalise to -180..180 before working out the compass direction, so a
-// value like 257 doesn't render as the nonstandard "257.0°E" instead of "103.0°W".
-function normaliseLongitude (longitude) {
-  let value = longitude % 360
-  if (value > 180) value -= 360
-  if (value < -180) value += 360
-  return value
 }
 
 function formatLocation (tip) {
@@ -60,27 +52,44 @@ async function fetchTipsForNoradId (noradId) {
   return Array.isArray(tips) ? tips : [tips]
 }
 
-// The list page shows the latest predicted location per object. Fetching each object's
-// TIP history is best-effort — a failure on one object's TIP lookup shouldn't take down
-// the whole table, it just falls back to "Unknown" for that row.
+// The list/table page shows the latest predicted location per object as a string; the map
+// page (buildReEntryMapViewModel) needs the raw numbers too, for plotting. Fetching each
+// object's TIP history is best-effort — a failure on one object's TIP lookup shouldn't
+// take down the whole page, it just falls back to "Unknown"/unplottable for that object.
 async function attachLatestLocation (event, listIsLive) {
   if (!listIsLive) {
-    return { ...event, location: 'Unknown' }
+    return { ...event, location: 'Unknown', latitude: null, longitude: null }
   }
   try {
     const tips = await fetchTipsForNoradId(event.norad_id)
     const latestTip = sortTipsByMostRecent(tips)[0]
-    return { ...event, location: formatLocation(latestTip) }
+    return {
+      ...event,
+      location: formatLocation(latestTip),
+      latitude: latestTip ? latestTip.latitude : null,
+      longitude: latestTip ? normaliseLongitude(latestTip.longitude) : null
+    }
   } catch (err) {
-    return { ...event, location: 'Unknown' }
+    return { ...event, location: 'Unknown', latitude: null, longitude: null }
   }
+}
+
+// Shared by the tracked-objects table (buildReEntryViewModel) and the map
+// (buildReEntryMapViewModel) — one fetch-and-enrich code path, not two. The underlying
+// MSH calls are already deduplicated across both by the response cache.
+async function loadEnrichedReentryEvents () {
+  const listResult = await getSectionData('re-entry', { liveFetcher: fetchReentryList, fixturePath: 're-entry/objects.json' })
+  const events = await Promise.all(
+    listResult.data.map((event) => attachLatestLocation(event, listResult.isLive))
+  )
+  return { isLive: listResult.isLive, events }
 }
 
 async function buildReEntryViewModel (requestedMonths) {
   const months = resolveTrendPeriod(requestedMonths)
 
-  const [listResult, trendResult] = await Promise.all([
-    getSectionData('re-entry', { liveFetcher: fetchReentryList, fixturePath: 're-entry/objects.json' }),
+  const [{ isLive: listIsLive, events: enrichedEvents }, trendResult] = await Promise.all([
+    loadEnrichedReentryEvents(),
     getSectionData('re-entry', { liveFetcher: () => fetchMonthlyTrend(months), fixturePath: 're-entry/trend.json' })
   ])
 
@@ -93,10 +102,6 @@ async function buildReEntryViewModel (requestedMonths) {
   // them could show inconsistent, confusing numbers for what looks like one figure.
   const periodTotalCount = trendRows.reduce((sum, row) => sum + row.count, 0)
   const periodAlertCount = trendRows.reduce((sum, row) => sum + row.alert_count, 0)
-
-  const enrichedEvents = await Promise.all(
-    listResult.data.map((event) => attachLatestLocation(event, listResult.isLive))
-  )
 
   const rows = enrichedEvents.map((event) => ({
     objectType: bucketObjectType(event.object_type),
@@ -116,7 +121,7 @@ async function buildReEntryViewModel (requestedMonths) {
   const analysedRows = rows.filter((row) => row.risk !== null)
 
   return {
-    isLive: listResult.isLive && trendResult.isLive,
+    isLive: listIsLive && trendResult.isLive,
     periodTotalCount,
     periodAlertCount,
     trend: trendRows.map((row) => ({
@@ -182,4 +187,33 @@ async function buildReEntryObjectViewModel (noradId) {
   }
 }
 
-module.exports = { buildReEntryViewModel, buildReEntryObjectViewModel }
+async function buildReEntryMapViewModel () {
+  const { isLive, events } = await loadEnrichedReentryEvents()
+
+  const plottable = events.filter((event) => hasResolvedLocation(event))
+
+  const markers = plottable.map((event) => {
+    const { x, y } = projectPoint(event.latitude, event.longitude)
+    return {
+      noradId: event.norad_id,
+      objectName: event.object_name,
+      objectType: bucketObjectType(event.object_type),
+      risk: highestRisk(event.atmospheric_risk, event.human_casualty_risk, event.fragments_risk),
+      decayDate: formatDate(event.decay_epoch),
+      location: event.location,
+      x,
+      y
+    }
+  })
+
+  return {
+    isLive,
+    markers,
+    plottedCount: markers.length,
+    totalCount: events.length,
+    unresolvedCount: events.length - markers.length,
+    graticule: buildGraticule()
+  }
+}
+
+module.exports = { buildReEntryViewModel, buildReEntryObjectViewModel, buildReEntryMapViewModel }

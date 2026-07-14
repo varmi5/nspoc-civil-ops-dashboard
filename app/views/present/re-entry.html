@@ -1,0 +1,23 @@
+{% extends "layouts/present.html" %}
+{% set bodyClasses = "present-mode" %}
+{% set pageName = "Present — Re-Entry" %}
+
+{% from "macros/present-controls.njk" import presentControls %}
+{% from "macros/kpi-tile.njk" import kpiTile %}
+{% from "macros/donut-chart.njk" import donutChart %}
+
+{% block content %}
+  {{ presentControls(nav) }}
+  <div class="msh-present-slide">
+    <h1 class="msh-present-slide__title">Re-Entry</h1>
+    <p class="msh-present-slide__subtitle">Last {{ viewModel.trendMonths }} month{{ "s" if viewModel.trendMonths != 1 }}</p>
+
+    <div class="msh-kpi-grid msh-present-slide__kpi-grid">
+      {{ kpiTile({ label: "Re-Entries Tracked", value: viewModel.periodTotalCount }) }}
+      {{ kpiTile({ label: "Re-Entry Alerts Issued", value: viewModel.periodAlertCount }) }}
+      {{ kpiTile({ label: "Objects Analysed for Risk", value: viewModel.analysedCount, unit: "of " + viewModel.totalCount }) }}
+    </div>
+
+    {{ donutChart("Object Types", viewModel.objectTypeDonut) }}
+  </div>
+{% endblock %}

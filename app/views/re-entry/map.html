@@ -1,0 +1,38 @@
+{% extends "layouts/main.html" %}
+
+{% set currentSection = "re-entry" %}
+{% set pageName = "Re-Entry Map" %}
+
+{% from "macros/badge.njk" import mshBadge %}
+{% from "macros/print-link.njk" import printLink %}
+{% from "macros/explainer.njk" import explainer %}
+{% from "macros/re-entry-map.njk" import reEntryMap %}
+{% from "macros/present-link.njk" import presentLink %}
+
+{% block content %}
+
+<a class="govuk-back-link" href="/re-entry">Back to Re-Entry</a>
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    <h1 class="govuk-heading-xl">Re-Entry Map</h1>
+    <p class="govuk-body-l">
+      {{ viewModel.plottedCount }} of {{ viewModel.totalCount }} tracked objects plotted
+      {% if viewModel.unresolvedCount > 0 %}({{ viewModel.unresolvedCount }} have no resolved location yet){% endif %}
+    </p>
+  </div>
+  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
+    {{ mshBadge(viewModel.isLive) }}
+    {{ printLink() }}
+    {{ presentLink("/present/re-entry/map") }}
+  </div>
+</div>
+
+{{ explainer("About this map", "
+  <p class='govuk-body'>This is a self-drawn latitude/longitude grid, not a map with real coastlines — there's no licensed map asset in hand yet, and sending these coordinates through a third-party map tile provider (Google Maps, Mapbox, OpenStreetMap) would send real OFFICIAL-classified location data to that provider's servers. Every marker is genuinely live and interactive: hover or select a marker to see the object, and select it to open its full Tracking and Impact Prediction (TIP) detail.</p>
+  <p class='govuk-body'>Use the Zoom in / Zoom out / Reset view buttons, scroll to zoom, or drag to pan. Markers are colour-coded by risk rating — grey means the object is still pending analyst review.</p>
+") }}
+
+{{ reEntryMap(viewModel) }}
+
+{% endblock %}

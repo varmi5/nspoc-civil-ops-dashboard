@@ -11,6 +11,7 @@
 {% from "macros/month-strip.njk" import monthStrip %}
 {% from "macros/period-selector.njk" import periodSelector %}
 {% from "macros/explainer.njk" import explainer %}
+{% from "macros/present-link.njk" import presentLink %}
 
 {% block content %}
 
@@ -21,6 +22,7 @@
   <div class="govuk-grid-column-one-third govuk-!-text-align-right">
     {{ mshBadge(viewModel.isLive) }}
     {{ printLink() }}
+    {{ presentLink("/present/re-entry") }}
   </div>
 </div>
 
@@ -44,7 +46,7 @@
 {{ donutChart("Object Types", viewModel.objectTypeDonut) }}
 
 <h2 class="govuk-heading-l">Tracked objects</h2>
-<p class="govuk-body">Select an object name to see its full Tracking and Impact Prediction (TIP) detail, including re-entry history.</p>
+<p class="govuk-body">Select an object name to see its full Tracking and Impact Prediction (TIP) detail, including re-entry history. Or see all tracked objects plotted on a <a class="govuk-link" href="/re-entry/map">live interactive map</a>.</p>
 
 <table class="govuk-table">
   <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Tracked re-entry objects</caption>

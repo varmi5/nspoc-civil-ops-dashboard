@@ -1,0 +1,15 @@
+{#
+Condensed executive summary callout — `summary` is a {monthLabel, sentences[]} object
+from app/lib/narrative.js (deterministic, template-built — no LLM involved).
+#}
+{% macro summaryPanel(summary, href) %}
+  <div class="msh-summary-panel">
+    <h2 class="msh-summary-panel__title">Executive summary — {{ summary.monthLabel }}</h2>
+    {% for sentence in summary.sentences %}
+      <p class="govuk-body">{{ sentence }}</p>
+    {% endfor %}
+    {% if href %}
+      <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ href }}">Read the full summary</a></p>
+    {% endif %}
+  </div>
+{% endmacro %}

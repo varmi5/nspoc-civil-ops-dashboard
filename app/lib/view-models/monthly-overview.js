@@ -74,7 +74,7 @@ function labelCollisionRange (range) {
 // A single month's total pulled from a {month, count} (or {month, alert_count}) style
 // monthly-breakdown endpoint, with a real month-over-month delta computed from the same
 // endpoint — not a separate, differently-scoped "lifetime" stats call.
-async function buildMonthTile ({ sectionKey, label, href, fixturePath, fetchRows, valueField, goodWhenDown, selectedMonth }) {
+async function buildMonthTile ({ key, sectionKey, label, href, fixturePath, fetchRows, valueField, goodWhenDown, selectedMonth }) {
   const previous = shiftMonths(selectedMonth, -1)
 
   const result = await getSectionData(sectionKey, {
@@ -92,11 +92,11 @@ async function buildMonthTile ({ sectionKey, label, href, fixturePath, fetchRows
 
   if (result.isLive) {
     const delta = computeDelta(result.data.value, result.data.previousValue, { goodWhenDown })
-    return { label, value: result.data.value, delta: delta.text, deltaGood: delta.deltaGood, href, isLive: true }
+    return { key, label, value: result.data.value, previousValue: result.data.previousValue, delta: delta.text, deltaGood: delta.deltaGood, href, isLive: true }
   }
 
   const fixture = loadFixture(fixturePath)
-  return { label, value: fixture.count, delta: fixture.delta, deltaGood: undefined, href, isLive: false }
+  return { key, label, value: fixture.count, previousValue: null, delta: fixture.delta, deltaGood: undefined, href, isLive: false }
 }
 
 // Collision figures are broken down by probability range per month, so "this month's
@@ -109,7 +109,7 @@ async function buildMonthTile ({ sectionKey, label, href, fixturePath, fetchRows
 // the same /v1/stats/monthly/conjunction-events data is reused for both collision tiles
 // and the Collision donut below, instead of re-requesting it five separate times against
 // an endpoint that has been observed to respond slowly under a date-range query.
-function buildCollisionTile ({ label, href, fixturePath, sumRange, selectedMonth, previousMonth, selectedResult, previousResult }) {
+function buildCollisionTile ({ key, label, href, fixturePath, sumRange, selectedMonth, previousMonth, selectedResult, previousResult }) {
   if (selectedResult.isLive && previousResult.isLive) {
     const sumFor = (rows, month) => rows
       .filter((row) => row.month === monthKey(month) && (sumRange ? sumRange(row.collision_probability_range) : true))
@@ -117,11 +117,11 @@ function buildCollisionTile ({ label, href, fixturePath, sumRange, selectedMonth
     const value = sumFor(selectedResult.data, selectedMonth)
     const previousValue = sumFor(previousResult.data, previousMonth)
     const delta = computeDelta(value, previousValue, { goodWhenDown: true })
-    return { label, value, delta: delta.text, deltaGood: delta.deltaGood, href, isLive: true }
+    return { key, label, value, previousValue, delta: delta.text, deltaGood: delta.deltaGood, href, isLive: true }
   }
 
   const fixture = loadFixture(fixturePath)
-  return { label, value: fixture.count, delta: fixture.delta, deltaGood: undefined, href, isLive: false }
+  return { key, label, value: fixture.count, previousValue: null, delta: fixture.delta, deltaGood: undefined, href, isLive: false }
 }
 
 function buildDonutFromFixtureEntries (entries) {
@@ -148,6 +148,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     previousConjunctionResult
   ] = await Promise.all([
     buildMonthTile({
+      key: 'reentry-count',
       sectionKey: 're-entry',
       label: 'Uncontrolled Re-Entries',
       href: '/re-entry',
@@ -158,6 +159,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
       selectedMonth
     }),
     buildMonthTile({
+      key: 'reentry-alerts',
       sectionKey: 're-entry',
       label: 'Re-Entry Alerts from NSpOC',
       href: '/re-entry',
@@ -168,6 +170,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
       selectedMonth
     }),
     buildMonthTile({
+      key: 'launches',
       sectionKey: 'launches',
       label: 'Global Launches',
       href: '/launches',
@@ -177,6 +180,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
       selectedMonth
     }),
     buildMonthTile({
+      key: 'fragmentation',
       sectionKey: 'collision-fragmentation',
       label: 'Fragmentation Incidents',
       href: '/collision-fragmentation',
@@ -192,6 +196,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
   ])
 
   const collisionRiskTile = buildCollisionTile({
+    key: 'collision-risk',
     label: 'Collision Risks to UK Satellites',
     href: '/collision-fragmentation',
     fixturePath: 'collision-fragmentation/risk-count.json',
@@ -202,6 +207,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
   })
 
   const collisionAlertTile = buildCollisionTile({
+    key: 'collision-alerts',
     label: 'Collision Alerts from NSpOC',
     href: '/collision-fragmentation',
     fixturePath: 'collision-fragmentation/alert-count.json',
@@ -218,22 +224,28 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     collisionRiskTile,
     collisionAlertTile,
     {
+      key: 'asteroids-count',
       label: 'Close Approach Asteroids',
       value: asteroids.closeApproachCount,
+      previousValue: null,
       delta: asteroids.closeApproachDelta,
       href: '/asteroids',
       isLive: false
     },
     {
+      key: 'asteroid-alerts',
       label: 'Asteroid Alerts from NSpOC',
       value: asteroids.alertCount,
+      previousValue: null,
       delta: asteroids.alertDelta,
       href: '/asteroids',
       isLive: false
     },
     {
+      key: 'space-weather-alerts',
       label: 'Space Weather Alerts from Met Office',
       value: spaceWeather.alertCount,
+      previousValue: null,
       delta: spaceWeather.delta,
       deltaGood: true,
       href: '/space-weather',
@@ -242,15 +254,19 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     launchesTile,
     fragmentationTile,
     {
+      key: 'uk-objects',
       label: 'UK Objects in Space',
       value: ukObjects.count,
+      previousValue: null,
       delta: ukObjects.delta,
       href: '/resident-space-objects',
       isLive: false
     },
     {
+      key: 'other-alerts',
       label: 'Other Alerts / Issues',
       value: otherAlerts.count,
+      previousValue: null,
       delta: otherAlerts.delta,
       isLive: false
     }
@@ -292,6 +308,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
   return {
     selectedMonth: monthKey(selectedMonth),
     selectedMonthLabel: monthLabel(selectedMonth),
+    previousMonthLabel: monthLabel(previousMonth),
     monthOptions,
     tiles,
     donuts: [

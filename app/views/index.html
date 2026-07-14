@@ -9,6 +9,8 @@
 {% from "macros/print-link.njk" import printLink %}
 {% from "macros/month-selector.njk" import monthSelector %}
 {% from "macros/explainer.njk" import explainer %}
+{% from "macros/summary-panel.njk" import summaryPanel %}
+{% from "macros/present-link.njk" import presentLink %}
 
 {% block content %}
 
@@ -19,10 +21,13 @@
   </div>
   <div class="govuk-grid-column-one-third govuk-!-text-align-right">
     {{ printLink() }}
+    {{ presentLink("/present/monthly-overview") }}
   </div>
 </div>
 
 {{ monthSelector("/", viewModel.selectedMonth, viewModel.monthOptions) }}
+
+{{ summaryPanel(summary, "/summary") }}
 
 <div class="msh-kpi-grid">
   {% for tile in viewModel.tiles %}
