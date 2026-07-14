@@ -52,6 +52,31 @@ async function fetchTipsForNoradId (noradId) {
   return Array.isArray(tips) ? tips : [tips]
 }
 
+// Confirmed by direct testing: reentry-events almost always has estimated_mass, apogee,
+// perigee, inclination, license_country and international_designator as null — but the
+// satellite catalog record for the same norad_id has all of them populated (it's the
+// object's permanent catalog entry, not tied to this specific re-entry assessment).
+// Best-effort: a failure here just means we keep showing "Unknown" for these fields,
+// same as before this fix existed.
+async function fetchSatelliteCatalog (noradId) {
+  return mshRequest(`/v1/satellites/${noradId}`)
+}
+
+async function tryFetchSatelliteCatalog (noradId) {
+  try {
+    return await fetchSatelliteCatalog(noradId)
+  } catch (err) {
+    return null
+  }
+}
+
+function firstDefined (...values) {
+  for (const value of values) {
+    if (value !== null && value !== undefined && value !== '') return value
+  }
+  return null
+}
+
 // The list/table page shows the latest predicted location per object as a string; the map
 // page (buildReEntryMapViewModel) needs the raw numbers too, for plotting. Fetching each
 // object's TIP history is best-effort — a failure on one object's TIP lookup shouldn't
@@ -60,17 +85,21 @@ async function attachLatestLocation (event, listIsLive) {
   if (!listIsLive) {
     return { ...event, location: 'Unknown', latitude: null, longitude: null }
   }
-  try {
-    const tips = await fetchTipsForNoradId(event.norad_id)
-    const latestTip = sortTipsByMostRecent(tips)[0]
-    return {
-      ...event,
-      location: formatLocation(latestTip),
-      latitude: latestTip ? latestTip.latitude : null,
-      longitude: latestTip ? normaliseLongitude(latestTip.longitude) : null
-    }
-  } catch (err) {
-    return { ...event, location: 'Unknown', latitude: null, longitude: null }
+  const [tipsResult, satellite] = await Promise.allSettled([
+    fetchTipsForNoradId(event.norad_id),
+    tryFetchSatelliteCatalog(event.norad_id)
+  ])
+
+  const tips = tipsResult.status === 'fulfilled' ? tipsResult.value : []
+  const latestTip = sortTipsByMostRecent(tips)[0]
+  const catalog = satellite.status === 'fulfilled' ? satellite.value : null
+
+  return {
+    ...event,
+    estimated_mass: firstDefined(event.estimated_mass, catalog && catalog.mass),
+    location: tips.length ? formatLocation(latestTip) : 'Unknown',
+    latitude: latestTip ? latestTip.latitude : null,
+    longitude: latestTip ? normaliseLongitude(latestTip.longitude) : null
   }
 }
 
@@ -143,7 +172,7 @@ async function fetchReentryByNoradId (noradId) {
 }
 
 async function buildReEntryObjectViewModel (noradId) {
-  const [detailResult, tipsResult] = await Promise.all([
+  const [detailResult, tipsResult, catalog] = await Promise.all([
     getSectionData('re-entry', {
       liveFetcher: () => fetchReentryByNoradId(noradId),
       fixturePath: 're-entry/tip/starlink-1735.json'
@@ -151,7 +180,8 @@ async function buildReEntryObjectViewModel (noradId) {
     getSectionData('re-entry', {
       liveFetcher: () => fetchTipsForNoradId(noradId),
       fixturePath: 're-entry/tip/starlink-1735-history.json'
-    })
+    }),
+    tryFetchSatelliteCatalog(noradId)
   ])
 
   const event = detailResult.data
@@ -163,17 +193,26 @@ async function buildReEntryObjectViewModel (noradId) {
     return null
   }
 
+  // reentry-events almost never carries these catalog fields itself (see fetchSatelliteCatalog
+  // above) — fall back to the object's satellite catalog record, which does.
+  const mass = firstDefined(event.estimated_mass, catalog && catalog.mass)
+  const apogee = firstDefined(event.apogee, catalog && catalog.apogee)
+  const perigee = firstDefined(event.perigee, catalog && catalog.perigee)
+  const inclination = firstDefined(event.inclination, catalog && catalog.inclination)
+  const licenseCountry = firstDefined(event.license_country, event.licensed_country, catalog && catalog.license_country)
+  const internationalDesignator = firstDefined(event.international_designator, catalog && catalog.international_designator)
+
   return {
     isLive: detailResult.isLive && tipsResult.isLive,
     noradId,
     objectName: event.object_name,
     objectType: bucketObjectType(event.object_type),
-    licenseCountry: event.license_country || event.licensed_country || 'Unknown',
-    internationalDesignator: event.international_designator || 'Unknown',
-    mass: event.estimated_mass ? `${event.estimated_mass} kg` : 'Unknown',
-    apogee: event.apogee ? `${event.apogee} km` : 'Unknown',
-    perigee: event.perigee ? `${event.perigee} km` : 'Unknown',
-    inclination: event.inclination !== null && event.inclination !== undefined ? `${event.inclination}°` : 'Unknown',
+    licenseCountry: licenseCountry || 'Unknown',
+    internationalDesignator: internationalDesignator || 'Unknown',
+    mass: mass ? `${mass} kg` : 'Unknown',
+    apogee: apogee ? `${apogee} km` : 'Unknown',
+    perigee: perigee ? `${perigee} km` : 'Unknown',
+    inclination: inclination !== null && inclination !== undefined ? `${inclination}°` : 'Unknown',
     decayEpoch: formatDateTime(event.decay_epoch),
     risk: highestRisk(event.atmospheric_risk, event.human_casualty_risk, event.fragments_risk),
     predictedLocation: formatLocation(latestTip),
