@@ -36,9 +36,8 @@
 </div>
 
 {{ explainer("What do these figures mean, and where do they come from?", "
-  <p class='govuk-body'>Figures marked <strong>Live from MSH API</strong> are fetched directly from the Monitor Space Hazards service for the reporting month selected above. Figures marked <strong>Sample data</strong> are illustrative placeholders because no confirmed live source exists for that figure yet.</p>
-  <p class='govuk-body'>“Collision Alerts from NSpOC” counts only conjunction events in the highest collision-probability band (greater than 1 in 1,000) as a proxy for alert-worthy events, since MSH does not publish a dedicated monthly alert count for collisions the way it does for re-entries.</p>
-  <p class='govuk-body'>“Collision Risks to UK Satellites” currently counts all tracked conjunction events for the month, not only UK-licensed satellites, since no UK-specific filter was confirmed on this endpoint.</p>
+  <p class='govuk-body'>Figures marked <strong>Live from MSH API</strong> are fetched directly from the Monitor Space Hazards service. Figures marked <strong>Sample data</strong> are illustrative placeholders because no confirmed live source exists for that figure yet, or the live source failed to respond in time.</p>
+  <p class='govuk-body'>“Collision Risks to UK Satellites” and “Collision Alerts from NSpOC” are lifetime totals, not scoped to the reporting month above — the month-scoped version of this data was tested directly and measured at 16&ndash;45 seconds to respond, far too slow to serve reliably on page load, so it almost always fell back to Sample data despite the underlying figures being real. These two figures trade exact month-scoping for actually being live. Neither is filtered to UK-licensed satellites specifically, since no such filter was confirmed on this endpoint — checked directly against the full OpenAPI parameter list for every conjunction/satellite endpoint.</p>
 ") }}
 
 <h2 class="govuk-heading-l">Data analysis ({{ viewModel.selectedMonthLabel }})</h2>

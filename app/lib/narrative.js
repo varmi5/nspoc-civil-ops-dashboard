@@ -57,10 +57,13 @@ function collisionSentence (viewModel) {
   const alertTile = findTile(viewModel.tiles, 'collision-alerts')
   const alertCount = alertTile ? alertTile.value : 0
 
+  // Not UK-scoped — no such filter is confirmed to exist on this endpoint (checked
+  // directly against the full parameter list), so this is worded as the tracked-catalogue
+  // total it actually is, not a UK-specific figure.
   if (alertCount === 0) {
-    return `${riskTile.value} conjunction events were tracked involving UK-monitored satellites, none of which reached the highest-risk band.`
+    return `${riskTile.value} conjunction events are on record across the tracked catalogue, none of which reached the highest-risk band.`
   }
-  return `${riskTile.value} conjunction events were tracked involving UK-monitored satellites, of which ${alertCount} reached the highest-risk band and prompted an alert.`
+  return `${riskTile.value} conjunction events are on record across the tracked catalogue, of which ${alertCount} reached the highest-risk band and prompted an alert.`
 }
 
 // The only conditional sentence — only worth saying if the change is large enough to be

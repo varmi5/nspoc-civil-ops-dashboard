@@ -36,8 +36,14 @@ function sortTipsByMostRecent (tips) {
   return [...tips].sort((a, b) => new Date(b.creation_date) - new Date(a.creation_date))
 }
 
+// The API defaults to epoch=future when it's not specified — confirmed live this only
+// covers objects still ahead of their predicted decay (2, right now), while the full
+// tracked population (epoch=all) was 3,696. "Tracked objects" should mean the real
+// breadth of what's being tracked, not just the sliver still pending — epoch=all, most
+// recent first, capped to a reasonable page size (this isn't a "last N months" query,
+// there's no date-range param on this endpoint, just a recency-sorted slice).
 async function fetchReentryList () {
-  return mshRequest('/v1/reentry-events/')
+  return mshRequest('/v1/reentry-events/?epoch=all&sort_by=decay_epoch&sort_order=desc&limit=30')
 }
 
 async function fetchMonthlyTrend (months) {
