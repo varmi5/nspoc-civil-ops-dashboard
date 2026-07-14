@@ -1,0 +1,14 @@
+[
+  {
+    "short_id": "SAMPLE-4",
+    "primary_object_common_name": "SAMPLE PROSPERO-LIKE",
+    "primary_object_norad_id": "99007",
+    "secondary_object_common_name": "UNKNOWN",
+    "secondary_object_norad_id": "99008",
+    "tca_time": "2026-07-19T16:18:00",
+    "collision_probability": 0.0015,
+    "miss_distance": 157,
+    "primary_object_mass": 65.4,
+    "secondary_object_mass": null
+  }
+]

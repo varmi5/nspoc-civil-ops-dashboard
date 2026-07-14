@@ -24,6 +24,37 @@ async function fetchConjunctionList () {
   return mshRequest('/v1/conjunction-events/?limit=100&sort_by=tca_time&sort_order=desc')
 }
 
+// The general list above is mostly routine wide-misses with a null collision_probability
+// — genuinely not very informative for a table. /for-analysis is a different, narrower
+// endpoint: events that have crossed a probability threshold and need a human analyst's
+// attention, with real computed probabilities and (confirmed live) each object's physical
+// details already inlined, no extra per-event lookup needed. Threshold matches the
+// existing "> 1e-3" elevated-risk bucket used elsewhere on this page, for consistency.
+const ANALYSIS_THRESHOLD = 0.001
+
+// Confirmed live: this endpoint returns one row per CDM revision, not one row per unique
+// event — the same short_id can appear repeatedly as Space-Track refines its estimate
+// (we saw one real object appear 5 times with 5 different cdm_external_id values and
+// probabilities). Keep only the highest (most recent) CDM per short_id, or "5 events
+// requiring analysis" would actually mean "1 event, refined 5 times."
+function dedupeToLatestCdmPerEvent (events) {
+  const latestByShortId = new Map()
+  for (const event of events) {
+    const existing = latestByShortId.get(event.short_id)
+    const cdmId = Number(event.cdm_external_id) || 0
+    const existingCdmId = existing ? Number(existing.cdm_external_id) || 0 : -1
+    if (!existing || cdmId > existingCdmId) {
+      latestByShortId.set(event.short_id, event)
+    }
+  }
+  return Array.from(latestByShortId.values())
+}
+
+async function fetchEventsForAnalysis () {
+  const events = await mshRequest(`/v1/conjunction-events/for-analysis?threshold=${ANALYSIS_THRESHOLD}&limit=20`)
+  return dedupeToLatestCdmPerEvent(events)
+}
+
 async function fetchFragmentationList () {
   return mshRequest('/v1/fragmentation-events/?epoch=all&limit=100&sort_by=event_epoch&sort_order=desc')
 }
@@ -67,7 +98,10 @@ async function fetchFragmentationByType () {
   return mshRequest('/v1/stats/fragmentation-events/by-fragmentation-type')
 }
 
-function buildCollisionRow (event) {
+// /for-analysis rows carry a real collision_probability and each object's physical
+// details inline — a genuinely different, richer shape from the general list, not
+// interchangeable with buildCollisionRow below.
+function buildAnalysisRow (event) {
   return {
     primaryObject: event.primary_object_common_name || 'Unknown',
     secondaryObject: event.secondary_object_common_name || 'Unknown',
@@ -76,8 +110,8 @@ function buildCollisionRow (event) {
     collisionProbability: event.collision_probability !== null && event.collision_probability !== undefined
       ? event.collision_probability.toExponential(2)
       : 'Unknown',
-    interest: event.user_interest || 'Unknown',
-    reported: event.report_number !== null && event.report_number !== undefined
+    primaryMass: event.primary_object_mass ? `${event.primary_object_mass} kg` : 'Unknown',
+    secondaryMass: event.secondary_object_mass ? `${event.secondary_object_mass} kg` : 'Unknown'
   }
 }
 
@@ -98,12 +132,14 @@ async function buildCollisionFragmentationViewModel (requestedMonths) {
 
   const [
     conjunctionListResult,
+    eventsForAnalysisResult,
     fragmentationListResult,
     conjunctionTrendResult,
     fragmentationTrendResult,
     fragmentationByTypeResult
   ] = await Promise.all([
     getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionList, fixturePath: 'collision-fragmentation/events.json' }),
+    getSectionData('collision-fragmentation', { liveFetcher: fetchEventsForAnalysis, fixturePath: 'collision-fragmentation/events-for-analysis.json' }),
     getSectionData('collision-fragmentation', { liveFetcher: fetchFragmentationList, fixturePath: 'collision-fragmentation/fragmentation-events.json' }),
     getSectionData('collision-fragmentation', { liveFetcher: () => fetchConjunctionMonthlyTrend(months), fixturePath: 'collision-fragmentation/trend.json' }),
     getSectionData('collision-fragmentation', { liveFetcher: () => fetchFragmentationMonthlyTrend(months), fixturePath: 'collision-fragmentation/fragmentation-trend.json' }),
@@ -113,7 +149,7 @@ async function buildCollisionFragmentationViewModel (requestedMonths) {
   const trendRows = conjunctionTrendResult.isLive ? conjunctionTrendResult.data : conjunctionTrendResult.data.slice(-months)
   const fragTrendRows = fragmentationTrendResult.isLive ? fragmentationTrendResult.data : fragmentationTrendResult.data.slice(-months)
 
-  const collisionRows = conjunctionListResult.data.slice(0, 20).map(buildCollisionRow)
+  const analysisRows = eventsForAnalysisResult.data.map(buildAnalysisRow)
   const fragmentationRows = fragmentationListResult.data.map(buildFragmentationRow)
 
   const riskCounts = conjunctionListResult.data.reduce((acc, event) => {
@@ -134,9 +170,14 @@ async function buildCollisionFragmentationViewModel (requestedMonths) {
     trendMonths: months,
     trendPeriods: ALLOWED_TREND_PERIODS,
     collisionCount: conjunctionListResult.data.length,
+    collisionCountIsLive: conjunctionListResult.isLive,
     reportedCount: conjunctionListResult.data.filter((event) => event.report_number !== null && event.report_number !== undefined).length,
+    requiresAnalysisCount: eventsForAnalysisResult.data.length,
+    requiresAnalysisIsLive: eventsForAnalysisResult.isLive,
+    analysisThreshold: ANALYSIS_THRESHOLD.toExponential(0),
     fragmentationCount: fragmentationListResult.data.length,
-    collisionRows,
+    fragmentationCountIsLive: fragmentationListResult.isLive,
+    analysisRows,
     fragmentationRows,
     riskDonut,
     fragTypeDonut

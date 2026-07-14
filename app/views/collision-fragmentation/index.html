@@ -27,14 +27,15 @@
 </div>
 
 <div class="msh-kpi-grid">
-  {{ kpiTile({ label: "Conjunction Events Tracked (current snapshot)", value: viewModel.collisionCount }) }}
-  {{ kpiTile({ label: "Reported to UK Government", value: viewModel.reportedCount }) }}
-  {{ kpiTile({ label: "Fragmentation Incidents Tracked", value: viewModel.fragmentationCount }) }}
+  {{ kpiTile({ label: "Conjunction Events Tracked (current snapshot)", value: viewModel.collisionCount, isLive: viewModel.collisionCountIsLive }) }}
+  {{ kpiTile({ label: "Requires Analysis (probability > " + viewModel.analysisThreshold + ")", value: viewModel.requiresAnalysisCount, isLive: viewModel.requiresAnalysisIsLive }) }}
+  {{ kpiTile({ label: "Reported to UK Government", value: viewModel.reportedCount, isLive: viewModel.collisionCountIsLive }) }}
+  {{ kpiTile({ label: "Fragmentation Incidents Tracked", value: viewModel.fragmentationCount, isLive: viewModel.fragmentationCountIsLive }) }}
 </div>
 
 {{ explainer("What do \"conjunction\" and \"fragmentation\" mean?", "
   <p class='govuk-body'>A <strong>conjunction</strong> is the technical term for two tracked objects passing close together in orbit — this is what a collision risk is called before (hopefully) nothing happens. MSH tracks these as <code>conjunction-events</code>. A <strong>fragmentation</strong> is a breakup incident — an object splits into new trackable debris — tracked as <code>fragmentation-events</code>.</p>
-  <p class='govuk-body'>Each conjunction event is bucketed by NSpOC's own \"interest\" rating (Low/Medium/High), not a single numeric probability, since that's what's available per event from the API.</p>
+  <p class='govuk-body'>Most conjunctions are routine wide misses with no computed probability at all — the general list below is bucketed by NSpOC's own \"interest\" rating (Low/Medium/High) rather than a number. The \"Requires Analysis\" table further down uses a dedicated MSH endpoint that only surfaces events past a probability threshold, with a real computed collision probability for each.</p>
 ") }}
 
 <h2 class="govuk-heading-l">Conjunction events tracked</h2>
@@ -59,9 +60,10 @@
   </div>
 </div>
 
-<h2 class="govuk-heading-l">Tracked conjunction events</h2>
+<h2 class="govuk-heading-l">Events requiring analysis</h2>
+<p class="govuk-body">Conjunction events with a computed collision probability above {{ viewModel.analysisThreshold }} — the small minority of tracked events that actually warrant an analyst's attention, out of {{ viewModel.collisionCount }} tracked overall.</p>
 <table class="govuk-table">
-  <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Tracked conjunction events</caption>
+  <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Conjunction events requiring analysis</caption>
   <thead class="govuk-table__head">
     <tr class="govuk-table__row">
       <th scope="col" class="govuk-table__header">Primary Object</th>
@@ -69,20 +71,25 @@
       <th scope="col" class="govuk-table__header">Closest Approach</th>
       <th scope="col" class="govuk-table__header govuk-table__header--numeric">Miss Distance</th>
       <th scope="col" class="govuk-table__header govuk-table__header--numeric">Collision Probability</th>
-      <th scope="col" class="govuk-table__header">Interest</th>
-      <th scope="col" class="govuk-table__header">Reported</th>
+      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Primary Mass</th>
+      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Secondary Mass</th>
     </tr>
   </thead>
   <tbody class="govuk-table__body">
-    {% for row in viewModel.collisionRows %}
+    {% if viewModel.analysisRows | length == 0 %}
+      <tr class="govuk-table__row">
+        <td class="govuk-table__cell" colspan="7">No events currently exceed the analysis threshold.</td>
+      </tr>
+    {% endif %}
+    {% for row in viewModel.analysisRows %}
       <tr class="govuk-table__row">
         <td class="govuk-table__cell">{{ row.primaryObject }}</td>
         <td class="govuk-table__cell">{{ row.secondaryObject }}</td>
         <td class="govuk-table__cell">{{ row.closestApproach }}</td>
         <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.missDistance }}</td>
         <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.collisionProbability }}</td>
-        <td class="govuk-table__cell">{{ row.interest }}</td>
-        <td class="govuk-table__cell">{{ "Yes" if row.reported else "No" }}</td>
+        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.primaryMass }}</td>
+        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.secondaryMass }}</td>
       </tr>
     {% endfor %}
   </tbody>
