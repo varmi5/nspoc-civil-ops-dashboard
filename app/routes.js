@@ -10,6 +10,7 @@ const router = govukPrototypeKit.requests.setupRouter()
 
 const { buildReEntryViewModel, buildReEntryObjectViewModel, buildReEntryMapViewModel } = require('./lib/view-models/re-entry')
 const { buildMonthlyOverviewViewModel } = require('./lib/view-models/monthly-overview')
+const { buildCollisionFragmentationViewModel } = require('./lib/view-models/collision-fragmentation')
 const { buildExecutiveSummary } = require('./lib/narrative')
 const { presentNav } = require('./lib/present-nav')
 
@@ -65,6 +66,15 @@ router.get('/re-entry/:noradId', async (req, res, next) => {
   }
 })
 
+router.get('/collision-fragmentation', async (req, res, next) => {
+  try {
+    const viewModel = await buildCollisionFragmentationViewModel(req.query.months)
+    res.render('collision-fragmentation/index', { viewModel })
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.get('/present', (req, res) => res.redirect('/present/summary'))
 
 router.get('/present/summary', async (req, res, next) => {
@@ -99,6 +109,15 @@ router.get('/present/re-entry/map', async (req, res, next) => {
   try {
     const viewModel = await buildReEntryMapViewModel()
     res.render('present/re-entry-map', { viewModel, nav: presentNav('re-entry-map') })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.get('/present/collision-fragmentation', async (req, res, next) => {
+  try {
+    const viewModel = await buildCollisionFragmentationViewModel(req.query.months)
+    res.render('present/collision-fragmentation', { viewModel, nav: presentNav('collision-fragmentation') })
   } catch (err) {
     next(err)
   }

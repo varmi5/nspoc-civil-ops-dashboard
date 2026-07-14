@@ -1,0 +1,29 @@
+{% extends "layouts/present.html" %}
+{% set bodyClasses = "present-mode" %}
+{% set pageName = "Present — Collision & Fragmentation" %}
+
+{% from "macros/present-controls.njk" import presentControls %}
+{% from "macros/kpi-tile.njk" import kpiTile %}
+{% from "macros/donut-chart.njk" import donutChart %}
+
+{% block content %}
+  {{ presentControls(nav) }}
+  <div class="msh-present-slide">
+    <h1 class="msh-present-slide__title">Collision &amp; Fragmentation</h1>
+
+    <div class="msh-kpi-grid msh-present-slide__kpi-grid">
+      {{ kpiTile({ label: "Conjunction Events Tracked", value: viewModel.collisionCount }) }}
+      {{ kpiTile({ label: "Reported to UK Government", value: viewModel.reportedCount }) }}
+      {{ kpiTile({ label: "Fragmentation Incidents", value: viewModel.fragmentationCount }) }}
+    </div>
+
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-one-half">
+        {{ donutChart("Source of Risk", viewModel.riskDonut) }}
+      </div>
+      <div class="govuk-grid-column-one-half">
+        {{ donutChart("Fragmentation Cause", viewModel.fragTypeDonut) }}
+      </div>
+    </div>
+  </div>
+{% endblock %}

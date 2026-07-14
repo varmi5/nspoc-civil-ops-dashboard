@@ -1,7 +1,9 @@
 {#
 Renders a monthly trend as a horizontally-scrolling strip of compact cards (scan left to
 right across months) instead of a tall vertical table you have to scroll down through.
-`months` is an array of { month, count, alertCount }.
+`months` is an array of { month, count, alertCount? } — alertCount is optional; the sub-line
+is only shown when it's actually provided (Re-Entry's trend has one, Collision &
+Fragmentation's plain event-count trend doesn't).
 #}
 {% macro monthStrip(months) %}
   <div class="msh-month-strip">
@@ -9,7 +11,9 @@ right across months) instead of a tall vertical table you have to scroll down th
       <div class="msh-month-strip__card">
         <span class="msh-month-strip__label">{{ month.month }}</span>
         <span class="msh-month-strip__value">{{ month.count }}</span>
-        <span class="msh-month-strip__sub">{{ month.alertCount }} alert{{ "s" if month.alertCount != 1 }}</span>
+        {% if month.alertCount is defined %}
+          <span class="msh-month-strip__sub">{{ month.alertCount }} alert{{ "s" if month.alertCount != 1 }}</span>
+        {% endif %}
       </div>
     {% endfor %}
   </div>

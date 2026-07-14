@@ -1,0 +1,118 @@
+{% extends "layouts/main.html" %}
+
+{% set currentSection = "collision-fragmentation" %}
+{% set pageName = "Collision & Fragmentation" %}
+
+{% from "macros/badge.njk" import mshBadge %}
+{% from "macros/kpi-tile.njk" import kpiTile %}
+{% from "macros/donut-chart.njk" import donutChart %}
+{% from "macros/risk-tag.njk" import riskTag %}
+{% from "macros/print-link.njk" import printLink %}
+{% from "macros/present-link.njk" import presentLink %}
+{% from "macros/month-strip.njk" import monthStrip %}
+{% from "macros/period-selector.njk" import periodSelector %}
+{% from "macros/explainer.njk" import explainer %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    <h1 class="govuk-heading-xl">Collision &amp; Fragmentation</h1>
+  </div>
+  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
+    {{ mshBadge(viewModel.isLive) }}
+    {{ printLink() }}
+    {{ presentLink("/present/collision-fragmentation") }}
+  </div>
+</div>
+
+<div class="msh-kpi-grid">
+  {{ kpiTile({ label: "Conjunction Events Tracked (current snapshot)", value: viewModel.collisionCount }) }}
+  {{ kpiTile({ label: "Reported to UK Government", value: viewModel.reportedCount }) }}
+  {{ kpiTile({ label: "Fragmentation Incidents Tracked", value: viewModel.fragmentationCount }) }}
+</div>
+
+{{ explainer("What do \"conjunction\" and \"fragmentation\" mean?", "
+  <p class='govuk-body'>A <strong>conjunction</strong> is the technical term for two tracked objects passing close together in orbit — this is what a collision risk is called before (hopefully) nothing happens. MSH tracks these as <code>conjunction-events</code>. A <strong>fragmentation</strong> is a breakup incident — an object splits into new trackable debris — tracked as <code>fragmentation-events</code>.</p>
+  <p class='govuk-body'>Each conjunction event is bucketed by NSpOC's own \"interest\" rating (Low/Medium/High), not a single numeric probability, since that's what's available per event from the API.</p>
+") }}
+
+<h2 class="govuk-heading-l">Conjunction events tracked</h2>
+{{ periodSelector("/collision-fragmentation", viewModel.trendMonths, viewModel.trendPeriods, "months", "month") }}
+<p class="govuk-body-s msh-month-strip__scroll-hint">Scroll right to see all {{ viewModel.trendMonths }} months →</p>
+{{ monthStrip(viewModel.trend) }}
+
+<h2 class="govuk-heading-l">Fragmentation incidents tracked</h2>
+{{ monthStrip(viewModel.fragmentationTrend) }}
+
+<h2 class="govuk-heading-l">Data analysis</h2>
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-one-half">
+    <div class="msh-donut-chart-card">
+      {{ donutChart("Source of Risk (by interest rating)", viewModel.riskDonut) }}
+    </div>
+  </div>
+  <div class="govuk-grid-column-one-half">
+    <div class="msh-donut-chart-card">
+      {{ donutChart("Fragmentation Cause", viewModel.fragTypeDonut) }}
+    </div>
+  </div>
+</div>
+
+<h2 class="govuk-heading-l">Tracked conjunction events</h2>
+<table class="govuk-table">
+  <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Tracked conjunction events</caption>
+  <thead class="govuk-table__head">
+    <tr class="govuk-table__row">
+      <th scope="col" class="govuk-table__header">Primary Object</th>
+      <th scope="col" class="govuk-table__header">Secondary Object</th>
+      <th scope="col" class="govuk-table__header">Closest Approach</th>
+      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Miss Distance</th>
+      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Collision Probability</th>
+      <th scope="col" class="govuk-table__header">Interest</th>
+      <th scope="col" class="govuk-table__header">Reported</th>
+    </tr>
+  </thead>
+  <tbody class="govuk-table__body">
+    {% for row in viewModel.collisionRows %}
+      <tr class="govuk-table__row">
+        <td class="govuk-table__cell">{{ row.primaryObject }}</td>
+        <td class="govuk-table__cell">{{ row.secondaryObject }}</td>
+        <td class="govuk-table__cell">{{ row.closestApproach }}</td>
+        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.missDistance }}</td>
+        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.collisionProbability }}</td>
+        <td class="govuk-table__cell">{{ row.interest }}</td>
+        <td class="govuk-table__cell">{{ "Yes" if row.reported else "No" }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2 class="govuk-heading-l">Recent fragmentation incidents</h2>
+<table class="govuk-table">
+  <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Recent fragmentation incidents</caption>
+  <thead class="govuk-table__head">
+    <tr class="govuk-table__row">
+      <th scope="col" class="govuk-table__header">Object</th>
+      <th scope="col" class="govuk-table__header">Date</th>
+      <th scope="col" class="govuk-table__header">Cause</th>
+      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Modelled Fragments</th>
+      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Known Fragments</th>
+      <th scope="col" class="govuk-table__header">Risk</th>
+    </tr>
+  </thead>
+  <tbody class="govuk-table__body">
+    {% for row in viewModel.fragmentationRows %}
+      <tr class="govuk-table__row">
+        <td class="govuk-table__cell">{{ row.primaryObject }}</td>
+        <td class="govuk-table__cell">{{ row.date }}</td>
+        <td class="govuk-table__cell">{{ row.fragmentationType }}</td>
+        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.modelledFragments }}</td>
+        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.knownFragments }}</td>
+        <td class="govuk-table__cell">{{ riskTag(row.risk) }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

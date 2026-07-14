@@ -1,0 +1,13 @@
+[
+  {
+    "short_id": "FG00-0001",
+    "primary_object_common_name": "SAMPLE-34343",
+    "primary_object_norad_id": "99010",
+    "event_epoch": "2026-03-29T19:30:00",
+    "risk": "Low",
+    "fragmentation_type": "Explosion",
+    "modelled_fragments": 239,
+    "known_fragments": 4,
+    "affected_regime": "LEO"
+  }
+]

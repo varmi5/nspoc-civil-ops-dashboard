@@ -1,5 +1,41 @@
 [
-  { "short_id": "SAMPLE-1", "report_number": null, "additional_analysis": null, "user_interest": "Low" },
-  { "short_id": "SAMPLE-2", "report_number": null, "additional_analysis": "Under review", "user_interest": "Medium" },
-  { "short_id": "SAMPLE-3", "report_number": 1, "additional_analysis": "Closed, no incident", "user_interest": "High" }
+  {
+    "short_id": "SAMPLE-1",
+    "primary_object_norad_id": "99001",
+    "secondary_object_norad_id": "99002",
+    "primary_object_common_name": "SAMPLE-SAT-A",
+    "secondary_object_common_name": "SAMPLE-DEBRIS-1",
+    "tca_time": "2026-07-20T14:30:00",
+    "collision_probability": 0.0000012,
+    "miss_distance": 8450,
+    "user_interest": "Low",
+    "report_number": null,
+    "risk": null
+  },
+  {
+    "short_id": "SAMPLE-2",
+    "primary_object_norad_id": "99003",
+    "secondary_object_norad_id": "99004",
+    "primary_object_common_name": "SAMPLE-SAT-B",
+    "secondary_object_common_name": "SAMPLE-SAT-C",
+    "tca_time": "2026-07-21T02:10:00",
+    "collision_probability": 0.0004,
+    "miss_distance": 1120,
+    "user_interest": "Medium",
+    "report_number": null,
+    "risk": null
+  },
+  {
+    "short_id": "SAMPLE-3",
+    "primary_object_norad_id": "99005",
+    "secondary_object_norad_id": "99006",
+    "primary_object_common_name": "SAMPLE-SAT-D",
+    "secondary_object_common_name": "SAMPLE-DEBRIS-2",
+    "tca_time": "2026-07-19T09:00:00",
+    "collision_probability": 0.0021,
+    "miss_distance": 340,
+    "user_interest": "High",
+    "report_number": 1,
+    "risk": "High"
+  }
 ]
