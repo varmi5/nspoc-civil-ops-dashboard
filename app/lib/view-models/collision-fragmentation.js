@@ -1,8 +1,10 @@
 const { getSectionData } = require('../msh/get-section-data')
 const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
+const { buildBarChart } = require('../charts/bar-chart')
 const { formatDateTime, formatMonth } = require('../format-date')
 const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths, monthKey, listRecentMonths } = require('../date-range')
+const { ANALYSIS_THRESHOLD, fetchEventsForAnalysis } = require('../msh/conjunction-analysis')
 
 const ALLOWED_TREND_PERIODS = [1, 3, 6, 12, 24]
 const DEFAULT_TREND_PERIOD = 12
@@ -22,37 +24,6 @@ function bucketByInterest (event) {
 
 async function fetchConjunctionList () {
   return mshRequest('/v1/conjunction-events/?limit=100&sort_by=tca_time&sort_order=desc')
-}
-
-// The general list above is mostly routine wide-misses with a null collision_probability
-// — genuinely not very informative for a table. /for-analysis is a different, narrower
-// endpoint: events that have crossed a probability threshold and need a human analyst's
-// attention, with real computed probabilities and (confirmed live) each object's physical
-// details already inlined, no extra per-event lookup needed. Threshold matches the
-// existing "> 1e-3" elevated-risk bucket used elsewhere on this page, for consistency.
-const ANALYSIS_THRESHOLD = 0.001
-
-// Confirmed live: this endpoint returns one row per CDM revision, not one row per unique
-// event — the same short_id can appear repeatedly as Space-Track refines its estimate
-// (we saw one real object appear 5 times with 5 different cdm_external_id values and
-// probabilities). Keep only the highest (most recent) CDM per short_id, or "5 events
-// requiring analysis" would actually mean "1 event, refined 5 times."
-function dedupeToLatestCdmPerEvent (events) {
-  const latestByShortId = new Map()
-  for (const event of events) {
-    const existing = latestByShortId.get(event.short_id)
-    const cdmId = Number(event.cdm_external_id) || 0
-    const existingCdmId = existing ? Number(existing.cdm_external_id) || 0 : -1
-    if (!existing || cdmId > existingCdmId) {
-      latestByShortId.set(event.short_id, event)
-    }
-  }
-  return Array.from(latestByShortId.values())
-}
-
-async function fetchEventsForAnalysis () {
-  const events = await mshRequest(`/v1/conjunction-events/for-analysis?threshold=${ANALYSIS_THRESHOLD}&limit=20`)
-  return dedupeToLatestCdmPerEvent(events)
 }
 
 async function fetchFragmentationList () {
@@ -78,13 +49,23 @@ function fillMonthlySeries (rows, months) {
     })
 }
 
-// /v1/stats/monthly/conjunction-events is broken down by probability range per month —
-// sum across ranges for a single "how many conjunction events this month" trend line.
+// CORRECTED: this was calling /v1/stats/monthly/conjunction-events (genuinely slow,
+// 15-60s+, needed a background-only fetch). There's a separate "-aggregated" endpoint
+// with the same params, confirmed directly at 66-311ms including a full 12-month range
+// in a single call — no background-fetch workaround needed. Returns one row per month
+// with an explicit `total` (not one row per probability-range needing summation).
+//
+// CAVEAT, not resolved: totals here still run far higher than NSpOC's own reported
+// monthly figure — but monthly volume is itself highly volatile (June 2026 measured at
+// 2,357 vs 40,000-78,000 in every surrounding month), so which month NSpOC's reference
+// was for matters. Ruled out directly: CDM-revision duplication and a missing UK filter
+// (see monthly-overview.js's fetchConjunctionMonthlyTotal for the full investigation).
+// Treat as real but unverified against NSpOC's own methodology.
 async function fetchConjunctionMonthlyTrend (months) {
   const end = currentMonth()
   const start = shiftMonths(end, -(months - 1))
-  const rows = await mshRequest(`/v1/stats/monthly/conjunction-events?start_date=${toDateString(startOfMonth(start))}&end_date=${toDateString(endOfMonth(end))}`)
-  return fillMonthlySeries(rows, months)
+  const rows = await mshRequest(`/v1/stats/monthly/conjunction-events-aggregated?start_date=${toDateString(startOfMonth(start))}&end_date=${toDateString(endOfMonth(end))}`)
+  return fillMonthlySeries(rows.map((row) => ({ month: row.month, count: row.total })), months)
 }
 
 async function fetchFragmentationMonthlyTrend (months) {
@@ -163,10 +144,19 @@ async function buildCollisionFragmentationViewModel (requestedMonths) {
     fragmentationByTypeResult.data.map((row) => ({ label: row.fragmentation_type, value: row.count }))
   )
 
+  // Latest month first — the current/most recent period is what you want to see
+  // immediately, not after scrolling right past everything older. The bar chart uses the
+  // same latest-first order/data as the cards (buildBarChart just plots whatever order
+  // it's given), so switching views never reorders anything underneath the reader.
+  const trend = trendRows.slice().reverse().map((row) => ({ month: formatMonth(row.month), count: row.count }))
+  const fragmentationTrend = fragTrendRows.slice().reverse().map((row) => ({ month: formatMonth(row.month), count: row.count }))
+
   return {
     isLive: conjunctionListResult.isLive && fragmentationListResult.isLive && conjunctionTrendResult.isLive && fragmentationTrendResult.isLive,
-    trend: trendRows.map((row) => ({ month: formatMonth(row.month), count: row.count })),
-    fragmentationTrend: fragTrendRows.map((row) => ({ month: formatMonth(row.month), count: row.count })),
+    trend,
+    fragmentationTrend,
+    trendChart: buildBarChart(trend),
+    fragmentationTrendChart: buildBarChart(fragmentationTrend),
     trendMonths: months,
     trendPeriods: ALLOWED_TREND_PERIODS,
     collisionCount: conjunctionListResult.data.length,

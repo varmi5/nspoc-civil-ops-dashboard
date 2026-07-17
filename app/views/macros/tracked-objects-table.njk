@@ -1,0 +1,43 @@
+{% from "macros/risk-tag.njk" import riskTag %}
+
+{#
+Renders one tab panel's worth of the tracked re-entry objects table. Wrapped in
+.msh-scroll-panel (fixed max-height, internal scroll) rather than left to grow the whole
+page's length — same "scrollable, not page-length" principle as the month-strip above it.
+#}
+{% macro trackedObjectsTable(rows, emptyMessage) %}
+  <div class="msh-scroll-panel">
+    <table class="govuk-table">
+      <caption class="govuk-table__caption govuk-visually-hidden">Tracked re-entry objects</caption>
+      <thead class="govuk-table__head">
+        <tr class="govuk-table__row">
+          <th scope="col" class="govuk-table__header">Object Type</th>
+          <th scope="col" class="govuk-table__header">Object Name</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Mass</th>
+          <th scope="col" class="govuk-table__header">Date</th>
+          <th scope="col" class="govuk-table__header">Risk Rating</th>
+          <th scope="col" class="govuk-table__header">Predicted Final Re-Entry Location</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body">
+        {% if rows | length == 0 %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell" colspan="6">{{ emptyMessage }}</td>
+          </tr>
+        {% endif %}
+        {% for row in rows %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__cell">{{ row.objectType }}</td>
+            <td class="govuk-table__cell">
+              <a class="govuk-link" href="/re-entry/{{ row.noradId }}">{{ row.objectName }}</a>
+            </td>
+            <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.mass }}</td>
+            <td class="govuk-table__cell">{{ row.date }}</td>
+            <td class="govuk-table__cell">{{ riskTag(row.risk) }}</td>
+            <td class="govuk-table__cell">{{ row.location }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}

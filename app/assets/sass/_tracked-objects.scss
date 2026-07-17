@@ -1,0 +1,27 @@
+// A fixed-height, internally-scrolling wrapper for a table — used so a long tracked-objects
+// list doesn't push the rest of the page down, mirroring the same "scroll within a
+// contained area, not the whole page" principle as the month-strip.
+.msh-scroll-panel {
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid govuk-functional-colour(border);
+}
+
+.msh-scroll-panel table {
+  margin-bottom: 0;
+}
+
+.msh-scroll-panel thead th {
+  position: sticky;
+  top: 0;
+  background: govuk-colour("white");
+}
+
+// print: no point capping height on paper — show everything, no scrollbar chrome
+@media print {
+  .msh-scroll-panel {
+    max-height: none;
+    overflow-y: visible;
+    border: none;
+  }
+}

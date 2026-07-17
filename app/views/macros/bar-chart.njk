@@ -1,0 +1,25 @@
+{#
+Renders the object returned by app/lib/charts/bar-chart.js as an accessible SVG bar chart.
+Each bar carries a native <title> (basic tooltip, zero JS, matches the re-entry map's
+marker pattern) plus a visible month/value label underneath — colour and bar height are
+never the only way to read a value.
+#}
+{% macro barChart(title, chart) %}
+  <div class="msh-bar-chart">
+    <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" preserveAspectRatio="none" class="msh-bar-chart__svg" role="img" aria-label="{{ title }} — see the labels below for exact values">
+      {% for bar in chart.bars %}
+        <rect x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.width }}" height="{{ bar.height }}" class="msh-bar-chart__bar">
+          <title>{{ bar.label }}: {{ bar.value }}</title>
+        </rect>
+      {% endfor %}
+    </svg>
+    <div class="msh-bar-chart__labels">
+      {% for bar in chart.bars %}
+        <div class="msh-bar-chart__label-item">
+          <span class="msh-bar-chart__label-month">{{ bar.label }}</span>
+          <span class="msh-bar-chart__label-value">{{ bar.value }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endmacro %}

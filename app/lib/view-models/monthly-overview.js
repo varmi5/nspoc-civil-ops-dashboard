@@ -2,6 +2,7 @@ const { getSectionData } = require('../msh/get-section-data')
 const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
 const { loadFixture } = require('../fixtures')
+const { fetchEventsForAnalysis } = require('../msh/conjunction-analysis')
 const {
   toDateString, startOfMonth, endOfMonth, currentMonth,
   parseMonthParam, monthKey, monthLabel, shiftMonths, listRecentMonths
@@ -40,14 +41,36 @@ async function fetchReentryByObjectTypeRows (month) {
   return mshRequest(`/v1/stats/monthly/reentry-events-by-object-type?start_date=${start}&end_date=${end}`)
 }
 
-// /v1/stats/monthly/conjunction-events (with a date range) has been measured at
-// 16-45 seconds in this environment — hopelessly beyond our 4s request timeout, so these
-// tiles/donut almost always fell back to Sample data despite the underlying figures being
-// perfectly real. /v1/conjunction-events/stats responds in ~200ms with a genuine,
-// always-current total/alert count (no date range, so not month-scoped — a real
-// trade-off, made explicit in the page's explainer text, not hidden).
+// /v1/conjunction-events/stats responds in ~200ms, but only via epoch=future (confirmed
+// live: epoch=all and epoch=past both time out against a much larger, likely
+// non-deduplicated historical archive) — meaning this is really "current tracked
+// catalogue", not a month, and not a lifetime total. Made explicit in the explainer text
+// and in both tile labels below. epoch is passed explicitly rather than relied on as a
+// default — see the epoch lesson further up this file's history / CLAUDE.md.
 async function fetchConjunctionStats () {
-  return mshRequest('/v1/conjunction-events/stats')
+  return mshRequest('/v1/conjunction-events/stats?epoch=future')
+}
+
+// CORRECTED: earlier this called /v1/stats/monthly/conjunction-events, which is genuinely
+// slow (15-60s+, needed a background-only fetch to avoid blocking page load — see prior
+// git history). There is a SEPARATE, distinct "-aggregated" endpoint with the same
+// start_date/end_date params — confirmed directly at 66-311ms including a full 12-month
+// range in one call, no background-fetch workaround needed at all. It returns one row per
+// month (not one row per probability-range per month) with an explicit `total` field.
+//
+// CAVEAT, still not resolved: this total remains far higher than the figure NSpOC's own
+// real monthly report shows — but monthly volume itself is highly volatile (confirmed
+// directly: June 2026 was 2,357 vs 40,000-78,000 in every surrounding month), so which
+// specific month NSpOC's reference figure was for matters a lot to any comparison. Ruled
+// out directly: CDM-revision duplication (zero duplicate short_ids in a 2,000-event
+// sample) and a missing UK filter (91.8% of events already involve a UK-licensed object).
+// Flagged honestly in the page's explainer text — treat this as real but unverified
+// against NSpOC's own methodology until confirmed with the MSH/NSpOC team.
+async function fetchConjunctionMonthlyTotal (month) {
+  const { start, end } = dateRangeFor(month)
+  const rows = await mshRequest(`/v1/stats/monthly/conjunction-events-aggregated?start_date=${start}&end_date=${end}`)
+  const row = rows.find((r) => r.month === monthKey(month))
+  return row ? row.total : 0
 }
 
 // Individual conjunction events carry a "user_interest" rating (Low/Medium/High), not the
@@ -119,6 +142,20 @@ function buildConjunctionStatsTile ({ key, label, href, fixturePath, valueField,
   return { key, label, value: fixture.count, previousValue: null, delta: fixture.delta, deltaGood: undefined, href, isLive: false }
 }
 
+// Mirrors buildConjunctionStatsTile above, but the live value here is already a plain
+// number (fetchConjunctionMonthlyTotal has already summed the probability-range rows),
+// not an object keyed by valueField. No delta: computing "vs last month" would mean a
+// second background-only fetch for the previous month, doubling the slow-endpoint load
+// for a comparison that isn't the point of this tile.
+function buildConjunctionMonthTile ({ key, label, href, fixturePath, monthResult }) {
+  if (monthResult.isLive) {
+    return { key, label, value: monthResult.data, previousValue: null, delta: null, href, isLive: true }
+  }
+
+  const fixture = loadFixture(fixturePath)
+  return { key, label, value: fixture.count, previousValue: null, delta: fixture.delta, deltaGood: undefined, href, isLive: false }
+}
+
 function buildDonutFromFixtureEntries (entries) {
   return buildDonut(entries.map((entry) => ({ label: entry.label, value: entry.value })))
 }
@@ -140,7 +177,9 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     fragmentationTile,
     reentryObjectTypeRows,
     conjunctionStatsResult,
-    conjunctionListResult
+    conjunctionListResult,
+    eventsForAnalysisResult,
+    conjunctionMonthTotalResult
   ] = await Promise.all([
     buildMonthTile({
       key: 'reentry-count',
@@ -187,12 +226,14 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     }),
     getSectionData('re-entry', { liveFetcher: () => fetchReentryByObjectTypeRows(selectedMonth), fixturePath: 're-entry/by-object-type.json' }),
     getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionStats, fixturePath: 'collision-fragmentation/risk-count.json' }),
-    getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionListForDonut, fixturePath: 'collision-fragmentation/events.json' })
+    getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionListForDonut, fixturePath: 'collision-fragmentation/events.json' }),
+    getSectionData('collision-fragmentation', { liveFetcher: fetchEventsForAnalysis, fixturePath: 'collision-fragmentation/events-for-analysis.json' }),
+    getSectionData('collision-fragmentation', { liveFetcher: () => fetchConjunctionMonthlyTotal(selectedMonth), fixturePath: 'collision-fragmentation/monthly-total.json' })
   ])
 
   const collisionRiskTile = buildConjunctionStatsTile({
     key: 'collision-risk',
-    label: 'Collision Risks to UK Satellites',
+    label: 'Collision Risks to UK Satellites (current snapshot)',
     href: '/collision-fragmentation',
     fixturePath: 'collision-fragmentation/risk-count.json',
     valueField: 'conjunction_event_total_count',
@@ -201,11 +242,39 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
 
   const collisionAlertTile = buildConjunctionStatsTile({
     key: 'collision-alerts',
-    label: 'Collision Alerts from NSpOC',
+    label: 'Collision Alerts from NSpOC (current snapshot)',
     href: '/collision-fragmentation',
     fixturePath: 'collision-fragmentation/alert-count.json',
     valueField: 'conjunction_event_alert_count',
     statsResult: conjunctionStatsResult
+  })
+
+  // The small subset that's actually crossed a probability threshold and needs a human
+  // analyst, live and fast (~1-2s) — a different, narrower figure from the month-scoped
+  // tile below (a current outstanding-review count, not a historical monthly total).
+  const collisionAnalysisTile = {
+    key: 'collision-analysis-required',
+    label: 'Collision Events Requiring Analyst Review',
+    value: eventsForAnalysisResult.data.length,
+    previousValue: null,
+    delta: null,
+    href: '/collision-fragmentation',
+    isLive: eventsForAnalysisResult.isLive
+  }
+
+  // The genuine month-scoped figure, via the background-only fetch above. Deliberately
+  // not directly comparable to "Collision Risks to UK Satellites (current snapshot)" —
+  // that's a live
+  // snapshot of the current catalogue (one row per event, most-recent CDM only); this is
+  // every screening recorded against the selected month specifically, across every CDM
+  // revision issued that month, which is why it can be a larger number even though it's
+  // "narrower" in time. Both facts are spelled out in the page's explainer text.
+  const collisionMonthTile = buildConjunctionMonthTile({
+    key: 'collision-month-total',
+    label: 'Collision Risks (This Month)',
+    href: '/collision-fragmentation',
+    fixturePath: 'collision-fragmentation/monthly-total.json',
+    monthResult: conjunctionMonthTotalResult
   })
 
   const tiles = [
@@ -213,6 +282,8 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     reentryAlertTile,
     collisionRiskTile,
     collisionAlertTile,
+    collisionMonthTile,
+    collisionAnalysisTile,
     {
       key: 'asteroids-count',
       label: 'Close Approach Asteroids',

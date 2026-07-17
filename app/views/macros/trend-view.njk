@@ -1,0 +1,27 @@
+{% from "macros/month-strip.njk" import monthStrip %}
+{% from "macros/bar-chart.njk" import barChart %}
+
+{#
+Wraps the existing month-strip card view with an alternative graph view, toggleable via
+two buttons. Cards remain the default and only rendering with no JS — the toggle buttons
+are hidden until JS confirms it can wire them up (same pattern as print-link.njk), and the
+graph panel stays hidden until switched to, so nothing changes for anyone without
+JavaScript. `idPrefix` must be unique per call on a page with more than one trend view
+(e.g. Collision & Fragmentation has both a conjunction and a fragmentation trend).
+`chart` is the object returned by app/lib/charts/bar-chart.js's buildBarChart(months) —
+built in the view-model, same convention as donutChart's `chart` param.
+#}
+{% macro trendView(idPrefix, title, months, chart) %}
+  <div class="msh-trend-view" data-msh-trend-view>
+    <div class="msh-trend-view__toggle msh-trend-view__toggle--hidden" role="group" aria-label="{{ title }}: choose view">
+      <button type="button" class="msh-trend-view__toggle-btn" data-view="cards" aria-pressed="true" aria-controls="{{ idPrefix }}-cards">Card view</button>
+      <button type="button" class="msh-trend-view__toggle-btn" data-view="graph" aria-pressed="false" aria-controls="{{ idPrefix }}-graph">Graph view</button>
+    </div>
+    <div id="{{ idPrefix }}-cards" data-msh-trend-panel="cards">
+      {{ monthStrip(months) }}
+    </div>
+    <div id="{{ idPrefix }}-graph" data-msh-trend-panel="graph" hidden>
+      {{ barChart(title, chart) }}
+    </div>
+  </div>
+{% endmacro %}

@@ -2,9 +2,10 @@ const config = require('./config')
 const tokenCache = require('./token-cache')
 const { withCache } = require('./response-cache')
 
-// Some MSH endpoints (observed: /v1/stats/monthly/conjunction-events with a date range)
-// can 504 slowly rather than fail fast. Without a bound, a single slow endpoint would
-// stall page rendering indefinitely instead of falling back to fixture data promptly.
+// Some MSH endpoints (observed: /v1/stats/monthly/conjunction-events, the non-aggregated
+// variant — not used by this app anymore, see conjunction-events-aggregated instead) can
+// 504 slowly rather than fail fast. Without a bound, a single slow endpoint would stall
+// page rendering indefinitely instead of falling back to fixture data promptly.
 const REQUEST_TIMEOUT_MS = 4000
 
 async function requestOnce (path, options) {

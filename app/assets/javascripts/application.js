@@ -19,9 +19,34 @@ function enhanceMonthSelectors (root) {
   })
 }
 
+// Card view / graph view toggle for a trend-view.njk instance. Hidden until here (see
+// .msh-trend-view__toggle--hidden) so a no-JS visitor only ever sees the cards panel
+// that's already rendered server-side — same reasoning as enhancePrintLinks above.
+function enhanceTrendViews (root) {
+  root.querySelectorAll('[data-msh-trend-view]').forEach((container) => {
+    const toggle = container.querySelector('.msh-trend-view__toggle')
+    if (!toggle || toggle.dataset.mshEnhanced) return
+    toggle.dataset.mshEnhanced = 'true'
+    toggle.classList.remove('msh-trend-view__toggle--hidden')
+
+    toggle.querySelectorAll('.msh-trend-view__toggle-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        const view = button.dataset.view
+        toggle.querySelectorAll('.msh-trend-view__toggle-btn').forEach((other) => {
+          other.setAttribute('aria-pressed', String(other === button))
+        })
+        container.querySelectorAll('[data-msh-trend-panel]').forEach((panel) => {
+          panel.hidden = panel.dataset.mshTrendPanel !== view
+        })
+      })
+    })
+  })
+}
+
 function enhance (root) {
   enhancePrintLinks(root)
   enhanceMonthSelectors(root)
+  enhanceTrendViews(root)
 }
 
 // Progressive enhancement for the period/month filters (period-selector links, the
@@ -48,6 +73,13 @@ function initFastNav () {
       main.innerHTML = nextMain.innerHTML
       document.title = nextDocument.title
       if (pushState) window.history.pushState({ mshFastNav: true }, '', url)
+      // The initial page load's govuk-frontend initAll() (see govuk-prototype-kit's own
+      // init.js) only ever scans the DOM once — swapped-in markup (e.g. a freshly-rendered
+      // govukTabs component after changing the period selector) needs its own JS
+      // component init, or things like tab-switching silently stop working.
+      if (window.GOVUKFrontend && typeof window.GOVUKFrontend.initAll === 'function') {
+        window.GOVUKFrontend.initAll({ scope: main })
+      }
       enhance(main)
       if (status) status.textContent = 'Page updated.'
       return true

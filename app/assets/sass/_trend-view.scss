@@ -1,0 +1,82 @@
+// Toggle between the existing month-strip cards and a bar-chart graph view. Hidden until
+// JS confirms it can wire the toggle up (same pattern as .msh-print-link--hidden) — with
+// no JS, only the cards panel (already rendered server-side) is ever shown.
+.msh-trend-view__toggle {
+  display: flex;
+  gap: govuk-spacing(2);
+  margin-bottom: govuk-spacing(3);
+}
+
+.msh-trend-view__toggle--hidden {
+  display: none;
+}
+
+.msh-trend-view__toggle-btn {
+  @include govuk-font($size: 16, $weight: regular);
+  background: govuk-colour("white");
+  border: 1px solid govuk-functional-colour(border);
+  padding: govuk-spacing(1) govuk-spacing(3);
+  cursor: pointer;
+}
+
+.msh-trend-view__toggle-btn[aria-pressed="true"] {
+  background: govuk-colour("blue");
+  border-color: govuk-colour("blue");
+  color: govuk-colour("white");
+}
+
+.msh-bar-chart {
+  margin-bottom: govuk-spacing(6);
+}
+
+.msh-bar-chart__svg {
+  width: 100%;
+  height: 200px;
+  display: block;
+}
+
+.msh-bar-chart__bar {
+  fill: govuk-colour("blue");
+}
+
+.msh-bar-chart__bar:hover {
+  fill: govuk-colour("light-blue");
+}
+
+.msh-bar-chart__labels {
+  display: flex;
+  gap: govuk-spacing(2);
+  overflow-x: auto;
+  padding-top: govuk-spacing(2);
+  scroll-snap-type: x proximity;
+}
+
+.msh-bar-chart__label-item {
+  flex: 0 0 auto;
+  min-width: 80px;
+  text-align: center;
+  scroll-snap-align: start;
+}
+
+.msh-bar-chart__label-month {
+  display: block;
+  @include govuk-font($size: 16, $weight: bold);
+}
+
+.msh-bar-chart__label-value {
+  display: block;
+  @include govuk-font($size: 16);
+  color: govuk-colour("black", $variant: "tint-25");
+}
+
+@media print {
+  // The cards view already unwraps to show everything on paper — no need for a second,
+  // interactive graph view in a static export.
+  .msh-trend-view__toggle {
+    display: none;
+  }
+
+  [data-msh-trend-panel="graph"] {
+    display: none;
+  }
+}

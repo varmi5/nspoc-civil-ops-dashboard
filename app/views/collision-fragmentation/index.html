@@ -9,7 +9,7 @@
 {% from "macros/risk-tag.njk" import riskTag %}
 {% from "macros/print-link.njk" import printLink %}
 {% from "macros/present-link.njk" import presentLink %}
-{% from "macros/month-strip.njk" import monthStrip %}
+{% from "macros/trend-view.njk" import trendView %}
 {% from "macros/period-selector.njk" import periodSelector %}
 {% from "macros/explainer.njk" import explainer %}
 
@@ -39,12 +39,13 @@
 ") }}
 
 <h2 class="govuk-heading-l">Conjunction events tracked</h2>
+<p class="govuk-body">Almost all of these are routine, low-probability screenings — see “Events requiring analysis” further down for the small subset that's actually significant. These monthly totals also run higher than NSpOC's own reported monthly figures — confirmed not caused by duplicate CDM revisions or a missing UK filter, but not yet matched to NSpOC's own methodology either (monthly volume is itself highly volatile, so a fair comparison depends on which month is being checked against). Treat this trend as real but unverified until that's confirmed.</p>
 {{ periodSelector("/collision-fragmentation", viewModel.trendMonths, viewModel.trendPeriods, "months", "month") }}
-<p class="govuk-body-s msh-month-strip__scroll-hint">Scroll right to see all {{ viewModel.trendMonths }} months →</p>
-{{ monthStrip(viewModel.trend) }}
+<p class="govuk-body-s msh-month-strip__scroll-hint">Latest month first — scroll right for earlier months →</p>
+{{ trendView("conjunction-trend", "Conjunction events tracked", viewModel.trend, viewModel.trendChart) }}
 
 <h2 class="govuk-heading-l">Fragmentation incidents tracked</h2>
-{{ monthStrip(viewModel.fragmentationTrend) }}
+{{ trendView("fragmentation-trend", "Fragmentation incidents tracked", viewModel.fragmentationTrend, viewModel.fragmentationTrendChart) }}
 
 <h2 class="govuk-heading-l">Data analysis</h2>
 <div class="govuk-grid-row">

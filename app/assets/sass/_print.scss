@@ -32,4 +32,19 @@
   .msh-map__zoom-group {
     transform: none !important;
   }
+
+  // Tabs (e.g. Re-Entry's tracked-objects tabs) only show one panel on screen — on paper,
+  // clicking isn't possible, so unwrap every panel and drop the clickable tab list, same
+  // "unwrap for print" treatment as the month-strip above.
+  .govuk-tabs__list {
+    display: none;
+  }
+
+  .govuk-tabs__panel--hidden {
+    display: block;
+  }
+
+  .govuk-tabs__panel + .govuk-tabs__panel {
+    break-before: page;
+  }
 }

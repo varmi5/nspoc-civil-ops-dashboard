@@ -1,6 +1,7 @@
 const { getSectionData } = require('../msh/get-section-data')
 const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
+const { buildBarChart } = require('../charts/bar-chart')
 const { highestRisk } = require('../format-risk')
 const { formatDate, formatDateTime, formatMonth } = require('../format-date')
 const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths } = require('../date-range')
@@ -40,10 +41,30 @@ function sortTipsByMostRecent (tips) {
 // covers objects still ahead of their predicted decay (2, right now), while the full
 // tracked population (epoch=all) was 3,696. "Tracked objects" should mean the real
 // breadth of what's being tracked, not just the sliver still pending — epoch=all, most
-// recent first, capped to a reasonable page size (this isn't a "last N months" query,
-// there's no date-range param on this endpoint, just a recency-sorted slice).
-async function fetchReentryList () {
-  return mshRequest('/v1/reentry-events/?epoch=all&sort_by=decay_epoch&sort_order=desc&limit=30')
+// recent first. There's no date-range param on this endpoint, so a big limit is fetched
+// once (confirmed live: even the full 3,696-record archive back to 2004 returns in ~2s)
+// and the requested reporting period/display cap are both applied client-side in
+// selectAndCap below, rather than by the query itself.
+async function fetchReentryListRaw () {
+  return mshRequest('/v1/reentry-events/?epoch=all&sort_by=decay_epoch&sort_order=desc&limit=2000')
+}
+
+// Keeps the raw fetch (above) and the per-caller windowing separate: the tracked-objects
+// table wants "the selected reporting period, capped to a sensible display size", the map
+// wants "however many recent objects it was already showing" — one shared fetch, two
+// different slices, so the underlying MSH call is only ever made once either way (the
+// response cache already dedupes it).
+function selectAndCap (rawEvents, { months, cap }) {
+  let filtered = rawEvents
+  if (months) {
+    const cutoff = startOfMonth(shiftMonths(currentMonth(), -(months - 1)))
+    filtered = rawEvents.filter((event) => !event.decay_epoch || new Date(event.decay_epoch) >= cutoff)
+  }
+  return {
+    events: filtered.slice(0, cap),
+    totalInPeriod: filtered.length,
+    truncated: filtered.length > cap
+  }
 }
 
 async function fetchMonthlyTrend (months) {
@@ -111,20 +132,34 @@ async function attachLatestLocation (event, listIsLive) {
 
 // Shared by the tracked-objects table (buildReEntryViewModel) and the map
 // (buildReEntryMapViewModel) — one fetch-and-enrich code path, not two. The underlying
-// MSH calls are already deduplicated across both by the response cache.
-async function loadEnrichedReentryEvents () {
-  const listResult = await getSectionData('re-entry', { liveFetcher: fetchReentryList, fixturePath: 're-entry/objects.json' })
+// MSH calls are already deduplicated across both by the response cache. `months`/`cap`
+// are applied to the raw list BEFORE enrichment — each selected object costs two more
+// live calls (TIP history + satellite catalog), so filtering first keeps that fan-out
+// bounded regardless of how large the raw fetch or the matching period turns out to be.
+async function loadEnrichedReentryEvents ({ months, cap } = {}) {
+  const listResult = await getSectionData('re-entry', { liveFetcher: fetchReentryListRaw, fixturePath: 're-entry/objects.json' })
+  const { events: selectedEvents, totalInPeriod, truncated } = listResult.isLive
+    ? selectAndCap(listResult.data, { months, cap })
+    : { events: listResult.data, totalInPeriod: listResult.data.length, truncated: false }
   const events = await Promise.all(
-    listResult.data.map((event) => attachLatestLocation(event, listResult.isLive))
+    selectedEvents.map((event) => attachLatestLocation(event, listResult.isLive))
   )
-  return { isLive: listResult.isLive, events }
+  return { isLive: listResult.isLive, events, totalInPeriod, truncated }
 }
+
+// A "sleek, scrollable" tab panel rather than a page-length table needs a sensible
+// display cap — each object enriched here costs two more live calls (TIP + satellite
+// catalog), so this also bounds that fan-out. Raised from the old flat "30 most recent"
+// limit since the table now spans the selected reporting period, not just the last
+// couple of weeks; objectsTruncated/objectsTotalInPeriod below tell the page (and this
+// isn't hidden) when the period holds more than fit on screen.
+const TRACKED_OBJECTS_CAP = 60
 
 async function buildReEntryViewModel (requestedMonths) {
   const months = resolveTrendPeriod(requestedMonths)
 
-  const [{ isLive: listIsLive, events: enrichedEvents }, trendResult] = await Promise.all([
-    loadEnrichedReentryEvents(),
+  const [{ isLive: listIsLive, events: enrichedEvents, totalInPeriod, truncated }, trendResult] = await Promise.all([
+    loadEnrichedReentryEvents({ months, cap: TRACKED_OBJECTS_CAP }),
     getSectionData('re-entry', { liveFetcher: () => fetchMonthlyTrend(months), fixturePath: 're-entry/trend.json' })
   ])
 
@@ -138,6 +173,7 @@ async function buildReEntryViewModel (requestedMonths) {
   const periodTotalCount = trendRows.reduce((sum, row) => sum + row.count, 0)
   const periodAlertCount = trendRows.reduce((sum, row) => sum + row.alert_count, 0)
 
+  const now = new Date()
   const rows = enrichedEvents.map((event) => ({
     objectType: bucketObjectType(event.object_type),
     objectName: event.object_name,
@@ -145,7 +181,8 @@ async function buildReEntryViewModel (requestedMonths) {
     date: formatDate(event.decay_epoch),
     risk: highestRisk(event.atmospheric_risk, event.human_casualty_risk, event.fragments_risk),
     location: event.location,
-    noradId: event.norad_id
+    noradId: event.norad_id,
+    isUpcoming: Boolean(event.decay_epoch) && new Date(event.decay_epoch) > now
   }))
 
   const objectTypeCounts = rows.reduce((acc, row) => {
@@ -153,20 +190,42 @@ async function buildReEntryViewModel (requestedMonths) {
     return acc
   }, {})
 
-  const analysedRows = rows.filter((row) => row.risk !== null)
+  // Three tabs instead of one long table: still ahead of their predicted decay
+  // ("Upcoming"), already decayed but not yet risk-assessed ("Pending Analysis" — this is
+  // the normal state most objects sit in, per the explainer text below), or already
+  // decayed and analysed. Risk assessment happens close to or after the decay date (see
+  // explainer), so "upcoming" objects with a risk rating already assigned would be
+  // unusual — in practice this split is almost always the same as future/past.
+  const decayedRows = rows.filter((row) => !row.isUpcoming)
+  const upcomingRows = rows.filter((row) => row.isUpcoming)
+  const analysedRows = decayedRows.filter((row) => row.risk !== null)
+  const pendingAnalysisRows = decayedRows.filter((row) => row.risk === null)
+
+  // Latest month first — the current/most recent period is what you want to see
+  // immediately, not after scrolling right past everything older.
+  const trend = trendRows.slice().reverse().map((row) => ({
+    month: formatMonth(row.month),
+    count: row.count,
+    alertCount: row.alert_count
+  }))
 
   return {
     isLive: listIsLive && trendResult.isLive,
     periodTotalCount,
     periodAlertCount,
-    trend: trendRows.map((row) => ({
-      month: formatMonth(row.month),
-      count: row.count,
-      alertCount: row.alert_count
-    })),
+    trend,
+    trendChart: buildBarChart(trend),
     trendMonths: months,
     trendPeriods: ALLOWED_TREND_PERIODS,
     rows,
+    tabs: {
+      upcoming: upcomingRows,
+      pendingAnalysis: pendingAnalysisRows,
+      analysed: analysedRows
+    },
+    objectsCap: TRACKED_OBJECTS_CAP,
+    objectsTotalInPeriod: totalInPeriod,
+    objectsTruncated: truncated,
     analysedCount: analysedRows.length,
     totalCount: rows.length,
     objectTypeDonut: buildDonut(Object.entries(objectTypeCounts).map(([label, value]) => ({ label, value })))
@@ -233,7 +292,9 @@ async function buildReEntryObjectViewModel (noradId) {
 }
 
 async function buildReEntryMapViewModel () {
-  const { isLive, events } = await loadEnrichedReentryEvents()
+  // Unchanged from this map's original behaviour — no period filter, just the 30 most
+  // recent by decay date — the period selector above only scopes the table, not the map.
+  const { isLive, events } = await loadEnrichedReentryEvents({ months: null, cap: 30 })
 
   const plottable = events.filter((event) => hasResolvedLocation(event))
 
