@@ -20,3 +20,5 @@ services:
         sync: false
       - key: MSH_CLIENT_SECRET
         sync: false
+      - key: PASSWORD
+        sync: false
