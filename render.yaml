@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: nspoc-civil-ops-dashboard
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: USE_LIVE_MSH
+        value: "true"
+      - key: MSH_AUTH_URL
+        value: https://monitor-your-satellites.eu.auth0.com/oauth/token
+      - key: MSH_API_BASE_URL
+        value: https://api.monitor-space-hazards.service.gov.uk
+      - key: MSH_AUDIENCE
+        value: monitor-your-satellites.service.gov.uk/api
+      - key: MSH_CLIENT_ID
+        sync: false
+      - key: MSH_CLIENT_SECRET
+        sync: false
