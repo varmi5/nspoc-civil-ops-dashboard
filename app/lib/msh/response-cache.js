@@ -13,6 +13,14 @@ const FAILURE_RETRY_MS = 30 * 1000 // how soon to retry a key that has NEVER suc
 
 const cache = new Map()
 const refreshesInFlight = new Set()
+// Coalesces concurrent COLD-miss requests for the same key into one shared promise.
+// Confirmed live (scripts/diagnose-concurrent-load.js, verify-cache-warmer.js): without
+// this, two callers racing on a brand-new key — e.g. buildReEntryViewModel() and
+// buildReEntryMapViewModel() both wanting /v1/satellites/with-metadata at once — each fired
+// their own duplicate live request instead of sharing one, doubling load for no benefit and
+// contributing to individual requests tipping over the 4s abort timeout under real
+// concurrent page loads.
+const coldFetchesInFlight = new Map()
 
 function refreshInBackground (key, fn) {
   if (refreshesInFlight.has(key)) return
@@ -43,14 +51,23 @@ async function withCache (key, fn) {
     throw entry.error
   }
 
-  try {
-    const data = await fn()
-    cache.set(key, { data, timestamp: now })
-    return data
-  } catch (err) {
-    cache.set(key, { error: err, timestamp: now })
-    throw err
+  if (coldFetchesInFlight.has(key)) {
+    return coldFetchesInFlight.get(key)
   }
+
+  const promise = fn()
+    .then((data) => {
+      cache.set(key, { data, timestamp: Date.now() })
+      return data
+    })
+    .catch((err) => {
+      cache.set(key, { error: err, timestamp: Date.now() })
+      throw err
+    })
+    .finally(() => coldFetchesInFlight.delete(key))
+
+  coldFetchesInFlight.set(key, promise)
+  return promise
 }
 
 module.exports = { withCache }

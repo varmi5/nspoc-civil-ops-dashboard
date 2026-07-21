@@ -97,6 +97,32 @@ async function tryFetchSatelliteCatalog (noradId) {
   }
 }
 
+// Confirmed by direct testing (scripts/investigate-tips-satellites-batch.js,
+// investigate-tips-latest-and-catalog-size.js): the full satellite catalog is only 834
+// records, and /v1/satellites/with-metadata?limit=1000 returns all of them in ~470ms — one
+// call, not one per norad_id. attachLatestLocation below uses this instead of calling
+// fetchSatelliteCatalog per-object, which used to mean up to TRACKED_OBJECTS_CAP (60)
+// individual /v1/satellites/{id} calls per page load. (/v1/tips/latest was also checked as
+// a possible bulk replacement for the per-object /v1/tips/{norad_id} call, but it returns
+// only the single most-recently-created TIP system-wide, not one per tracked object — no
+// bulk equivalent exists for that half of the fan-out.)
+async function fetchSatelliteCatalogMap () {
+  const records = await mshRequest('/v1/satellites/with-metadata?limit=1000')
+  const map = new Map()
+  for (const record of records) {
+    map.set(String(record.norad_id), record)
+  }
+  return map
+}
+
+async function tryFetchSatelliteCatalogMap () {
+  try {
+    return await fetchSatelliteCatalogMap()
+  } catch (err) {
+    return new Map()
+  }
+}
+
 function firstDefined (...values) {
   for (const value of values) {
     if (value !== null && value !== undefined && value !== '') return value
@@ -108,18 +134,15 @@ function firstDefined (...values) {
 // page (buildReEntryMapViewModel) needs the raw numbers too, for plotting. Fetching each
 // object's TIP history is best-effort — a failure on one object's TIP lookup shouldn't
 // take down the whole page, it just falls back to "Unknown"/unplottable for that object.
-async function attachLatestLocation (event, listIsLive) {
+// catalogMap is the one shared /v1/satellites/with-metadata fetch (see
+// fetchSatelliteCatalogMap above) — a plain lookup here, not a network call.
+async function attachLatestLocation (event, listIsLive, catalogMap) {
   if (!listIsLive) {
     return { ...event, location: 'Unknown', latitude: null, longitude: null }
   }
-  const [tipsResult, satellite] = await Promise.allSettled([
-    fetchTipsForNoradId(event.norad_id),
-    tryFetchSatelliteCatalog(event.norad_id)
-  ])
-
-  const tips = tipsResult.status === 'fulfilled' ? tipsResult.value : []
+  const tips = await fetchTipsForNoradId(event.norad_id).catch(() => [])
   const latestTip = sortTipsByMostRecent(tips)[0]
-  const catalog = satellite.status === 'fulfilled' ? satellite.value : null
+  const catalog = catalogMap.get(String(event.norad_id)) || null
 
   return {
     ...event,
@@ -133,23 +156,30 @@ async function attachLatestLocation (event, listIsLive) {
 // Shared by the tracked-objects table (buildReEntryViewModel) and the map
 // (buildReEntryMapViewModel) — one fetch-and-enrich code path, not two. The underlying
 // MSH calls are already deduplicated across both by the response cache. `months`/`cap`
-// are applied to the raw list BEFORE enrichment — each selected object costs two more
-// live calls (TIP history + satellite catalog), so filtering first keeps that fan-out
+// are applied to the raw list BEFORE enrichment — each selected object still costs one
+// more live call (TIP history; satellite catalog is now one shared call for the whole
+// batch, see fetchSatelliteCatalogMap above), so filtering first keeps that fan-out
 // bounded regardless of how large the raw fetch or the matching period turns out to be.
 async function loadEnrichedReentryEvents ({ months, cap } = {}) {
   const listResult = await getSectionData('re-entry', { liveFetcher: fetchReentryListRaw, fixturePath: 're-entry/objects.json' })
   const { events: selectedEvents, totalInPeriod, truncated } = listResult.isLive
     ? selectAndCap(listResult.data, { months, cap })
     : { events: listResult.data, totalInPeriod: listResult.data.length, truncated: false }
+
+  // One shared catalog fetch for however many objects are selected, not one per object —
+  // see fetchSatelliteCatalogMap above. Only fetched when the list itself is live: no
+  // point making a live call here just to enrich fixture-fallback data.
+  const catalogMap = listResult.isLive ? await tryFetchSatelliteCatalogMap() : new Map()
+
   const events = await Promise.all(
-    selectedEvents.map((event) => attachLatestLocation(event, listResult.isLive))
+    selectedEvents.map((event) => attachLatestLocation(event, listResult.isLive, catalogMap))
   )
   return { isLive: listResult.isLive, events, totalInPeriod, truncated }
 }
 
 // A "sleek, scrollable" tab panel rather than a page-length table needs a sensible
-// display cap — each object enriched here costs two more live calls (TIP + satellite
-// catalog), so this also bounds that fan-out. Raised from the old flat "30 most recent"
+// display cap — each object enriched here still costs one more live call (TIP history),
+// so this also bounds that fan-out. Raised from the old flat "30 most recent"
 // limit since the table now spans the selected reporting period, not just the last
 // couple of weeks; objectsTruncated/objectsTotalInPeriod below tell the page (and this
 // isn't hidden) when the period holds more than fit on screen.

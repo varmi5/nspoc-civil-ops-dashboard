@@ -13,6 +13,11 @@ const { buildMonthlyOverviewViewModel } = require('./lib/view-models/monthly-ove
 const { buildCollisionFragmentationViewModel } = require('./lib/view-models/collision-fragmentation')
 const { buildExecutiveSummary } = require('./lib/narrative')
 const { presentNav } = require('./lib/present-nav')
+const { warmCache } = require('./lib/msh/cache-warmer')
+
+// Runs once, when the server boots (routes.js is only required once per process) — see
+// cache-warmer.js for why.
+warmCache()
 
 router.get('/', async (req, res, next) => {
   try {

@@ -32,7 +32,11 @@ app/
       config.js                Reads MSH_* env vars (client id/secret, auth/API URLs)
       token-cache.js            OAuth2 client_credentials token fetch + cache
       response-cache.js        withCache() — stale-while-revalidate cache in front of
-                                mshRequest, keyed by full URL path
+                                mshRequest, keyed by full URL path; also coalesces
+                                concurrent cold-miss requests for the same key
+      cache-warmer.js           warmCache() — fires each section's default view once at
+                                server boot so the cache above is warm before any real
+                                request arrives
       get-section-data.js      getSectionData(sectionKey, {liveFetcher, fixturePath}) —
                                 THE pattern every view-model uses. Tries live if the
                                 section is liveCapable AND USE_LIVE_MSH=true, catches any
@@ -96,7 +100,24 @@ only ever attempts live if `sections.js` marks it `liveCapable: true` AND
 **Response caching (`response-cache.js`).** Stale-while-revalidate: once a key succeeds,
 stale data is served instantly on expiry (5 min) while a background refresh runs; a key
 that has never succeeded is retried at most every 30s. This is why "Sample data" flickers
-in only ever happen on a truly cold key, not on every page load.
+in only ever happen on a truly cold key, not on every page load. **Concurrent cold-miss
+requests for the same key are coalesced** into one shared in-flight promise — confirmed
+this mattered live: `buildReEntryViewModel()` and `buildReEntryMapViewModel()` both need
+the same `/v1/satellites/with-metadata` and reentry-list keys, and without coalescing each
+fired its own duplicate live request when called concurrently (see cache-warmer.js below),
+doubling load for zero benefit.
+
+**Startup cache-warming (`cache-warmer.js`).** `warmCache()` runs once when `routes.js` is
+first required (server boot) and fires the same default-view builders every route already
+calls, so the response cache is warm before any real visitor hits a cold page. This exists
+because a cold nodemon restart used to mean every section a developer clicked into within
+the next few seconds fought over the same MSH connection budget at once — confirmed live
+(`scripts/diagnose-concurrent-load.js`): ~73 concurrent calls (monthly-overview + re-entry +
+collision-fragmentation + launches all cold together) took 3.5-4s wall time, right at the
+4s abort timeout, and some individual calls did tip over it (the "This operation was
+aborted" log lines). This is NOT the background-fetch-per-request workaround warned about
+below — it's a one-time boot-time action using the endpoints already confirmed fast, not a
+mechanism that masks a slow one.
 
 **mshRequest has ONE fixed 4s timeout, no exceptions.** Do not build per-call custom
 timeouts or background-fetch workarounds for a slow endpoint — the fix for a slow endpoint
@@ -166,6 +187,19 @@ and occasionally silent on exactly this kind of behavioural gotcha.
   explicit `epoch`) is fast — adding `sort_order=asc` or an explicit `epoch` param on that
   specific endpoint pushed response times to 5-8s in testing. Test the exact param
   combination you intend to use, don't assume speed generalises across sort orders.
+- **Per-object fan-outs have a bulk sibling too, at least for the satellite catalog.**
+  Re-Entry's tracked-objects enrichment (`attachLatestLocation` in `re-entry.js`) used to
+  call `/v1/satellites/{norad_id}` once per object — up to `TRACKED_OBJECTS_CAP` (60) calls
+  on a single `/re-entry` page load, none sharing a cache key. Confirmed live
+  (`scripts/investigate-tips-satellites-batch.js`,
+  `investigate-tips-latest-and-catalog-size.js`): the entire catalog is only 834 records,
+  and `/v1/satellites/with-metadata?limit=1000` returns all of them in ~470ms — now fetched
+  once per batch via `fetchSatelliteCatalogMap()` instead. **`/v1/tips/latest` looked like
+  it might be the same kind of bulk shortcut for the other half of the fan-out
+  (`/v1/tips/{norad_id}`), but isn't** — it returns only the single most-recently-created
+  TIP system-wide (one object, not one per norad_id), confirmed by cross-checking against
+  real tracked objects that don't appear in it. That per-object TIP call remains genuinely
+  per-object; don't reintroduce an attempt to bulk it without new evidence.
 
 ### Endpoints currently called in production code (not scripts/)
 
@@ -183,8 +217,9 @@ and occasionally silent on exactly this kind of behavioural gotcha.
 | `/v1/stats/monthly/objects-launched` | monthly-overview | |
 | `/v1/reentry-events/?epoch=all&sort_by=decay_epoch&sort_order=desc&limit=2000` | re-entry | epoch=all is deliberate, see above |
 | `/v1/reentry-events/by-norad-id/{id}` | re-entry (object detail) | |
-| `/v1/tips/{norad_id}` | re-entry | returns an ARRAY of TIP messages, not one object |
-| `/v1/satellites/{norad_id}` | re-entry | catalog fallback fields |
+| `/v1/tips/{norad_id}` | re-entry | returns an ARRAY of TIP messages, not one object; genuinely per-object, no bulk equivalent (see below) |
+| `/v1/satellites/{norad_id}` | re-entry (object detail page only) | catalog fallback fields for a single object |
+| `/v1/satellites/with-metadata?limit=1000` | re-entry (tracked-objects list + map) | bulk catalog fetch, one call for up to 834 records — replaces what used to be up to 60 individual `/v1/satellites/{norad_id}` calls, see below |
 
 ## What's been built
 
