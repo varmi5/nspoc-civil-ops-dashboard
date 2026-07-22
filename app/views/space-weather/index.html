@@ -1,0 +1,64 @@
+{% extends "layouts/main.html" %}
+
+{% set currentSection = "space-weather" %}
+{% set pageName = "Space Weather" %}
+
+{% from "macros/badge.njk" import mshBadge %}
+{% from "macros/print-link.njk" import printLink %}
+{% from "macros/explainer.njk" import explainer %}
+{% from "macros/kpi-tile.njk" import kpiTile %}
+{% from "macros/month-selector.njk" import monthSelector %}
+{% from "macros/sector-status-tag.njk" import sectorStatusTag %}
+
+{% block content %}
+
+<div class="govuk-grid-row">
+  <div class="govuk-grid-column-two-thirds">
+    <h1 class="govuk-heading-xl">Space Weather</h1>
+  </div>
+  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
+    {{ mshBadge(viewModel.isLive) }}
+    {{ printLink() }}
+  </div>
+</div>
+
+{{ explainer("Where does this come from, and how are the sector ratings decided?", "
+  <p class='govuk-body'>Alerts are sourced live from NOAA's Space Weather Prediction Center — radio blackout, geomagnetic, electron flux, proton flux and geomagnetic sudden impulse alerts, the same alert families as NSpOC's existing MOSWOC-sourced log.</p>
+  <p class='govuk-body'><strong>The colour shown per sector is a first-draft mapping, not yet signed off by NSpOC.</strong> It's derived from NOAA's own published potential-impact descriptions per scale level, not NSpOC's real methodology — treat every rating on this page as provisional until it's validated against real historical reports.</p>
+") }}
+
+{{ monthSelector("/space-weather", viewModel.monthKeyValue, viewModel.monthOptions) }}
+
+<div class="msh-kpi-grid">
+  {{ kpiTile({ label: "Total Alerts (" + viewModel.monthLabel + ")", value: viewModel.totalAlerts, isLive: viewModel.isLive }) }}
+  {{ kpiTile({ label: "Days with at least one alert", value: viewModel.daysWithAlerts }) }}
+  {{ kpiTile({ label: "Sector Ratings at Yellow", value: viewModel.yellowRatingCount }) }}
+  {{ kpiTile({ label: "Sector Ratings at Red", value: viewModel.redRatingCount }) }}
+</div>
+
+<h2 class="govuk-heading-l">Space weather conditions by industry sector</h2>
+<div class="msh-scroll-panel">
+<table class="govuk-table">
+  <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Space weather conditions by industry sector, {{ viewModel.monthLabel }}</caption>
+  <thead class="govuk-table__head">
+    <tr class="govuk-table__row">
+      <th scope="col" class="govuk-table__header">Date</th>
+      {% for label in viewModel.sectorLabels %}
+        <th scope="col" class="govuk-table__header">{{ label }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody class="govuk-table__body">
+    {% for row in viewModel.rows %}
+      <tr class="govuk-table__row">
+        <td class="govuk-table__cell">{{ row.date }}</td>
+        {% for sector in row.sectors %}
+          <td class="govuk-table__cell">{{ sectorStatusTag(sector.status) }}</td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% endblock %}

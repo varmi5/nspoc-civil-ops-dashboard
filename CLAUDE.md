@@ -44,11 +44,21 @@ app/
       data-source.js            isConfiguredForLive(sectionKey) — liveCapable && useLiveMsh
       conjunction-analysis.js  Shared /for-analysis fetch + CDM-revision dedup logic
                                 (used by both Monthly Overview and Collision & Fragmentation)
+    space-weather/
+      config.js                USE_LIVE_SPACE_WEATHER flag — separate from USE_LIVE_MSH,
+                                NOAA needs no credentials
+      client.js                fetchAlerts() — NOAA SWPC's public alerts.json, no auth
+      parse-alert.js            Classifies product_id -> alert type, extracts NOAA
+                                Rx/Sx/Gx scale from message text where present
+      sector-rules.js           sectorStatusesForDay() — FIRST DRAFT sector-colour
+                                mapping, not signed off by NSpOC (see comments in file)
     view-models/
       monthly-overview.js      buildMonthlyOverviewViewModel(month)
       re-entry.js              buildReEntryViewModel(months), buildReEntryObjectViewModel
                                 (noradId), buildReEntryMapViewModel()
       collision-fragmentation.js  buildCollisionFragmentationViewModel(months)
+      space-weather.js          buildSpaceWeatherViewModel(month) — one row per calendar
+                                day, GREEN/YELLOW/RED per sector
     charts/
       donut.js                 Pure maths -> SVG donut segments (no rendering)
       bar-chart.js              Pure maths -> SVG bar geometry (no rendering)
@@ -62,6 +72,7 @@ app/
     index.html, summary.html    Monthly Overview + auto-summary pages
     re-entry/                   index (tabbed table), object (detail), map (SVG map)
     collision-fragmentation/    index
+    space-weather/               index — monthly per-day sector table
     present/                    Chrome-free slide versions of the above
     macros/                     Nunjucks components — kpi-tile, donut-chart, bar-chart,
                                 month-strip, trend-view (toggles between the two),
@@ -239,6 +250,19 @@ and occasionally silent on exactly this kind of behavioural gotcha.
   analysis table, fragmentation-incidents table.
 - **Presentation Mode** (`/present/*`) — chrome-free slide deck reusing the same
   view-models unmodified; keyboard arrow navigation; fullscreen toggle.
+- **Space Weather** (`/space-weather`) — the first non-MSH live data source: a monthly,
+  per-day GREEN/YELLOW/RED table across seven industry sectors (Local Resilience, Energy,
+  Aviation, Marine, Satellite Operators, Satellite Comms, Rail), sourced live from NOAA
+  SWPC's free public alerts feed (`app/lib/space-weather/`), not MSH — its own
+  `USE_LIVE_SPACE_WEATHER` flag (default true, no credentials needed), separate from
+  `USE_LIVE_MSH`. **The sector-colour mapping (`sector-rules.js`) is an explicit first
+  draft, not signed off by NSpOC** — built from NOAA's own published impact text per scale
+  level, not NSpOC's real methodology (an open question raised in the Krish meeting-prep
+  script but not yet answered). The fixture (`data-fixtures/space-weather/alerts.json`)
+  is Krish's real June 2026 MOSWOC alert log, converted to NOAA's raw shape. Confirmed live
+  (`scripts/investigate-noaa-alerts-shape.js`) that NOAA's own `noaa-scales.json` endpoint
+  is NOT a substitute for this — it's a ~5-day current/forecast snapshot, not a monthly
+  historical archive, so the per-day table has to come from parsing `alerts.json`.
 - **Executive Summary** (`/summary` + condensed panel on Monthly Overview) — fully
   deterministic sentence templates (`narrative.js`), explicitly not an LLM.
 - **Progressive enhancement throughout**: print links, month-selector auto-submit,
