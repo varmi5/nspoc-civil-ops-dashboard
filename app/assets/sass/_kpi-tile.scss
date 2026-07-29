@@ -1,15 +1,20 @@
+// Value-then-label stat order matches MSH's own KPI tiles (UpcomingEvents.tsx /
+// ObjectsTracked.tsx). The card border stays, though — MSH's real tiles are unboxed, but
+// on this dashboard the tile is the only thing separating one stat from the next in a
+// dense grid, and testing that unboxed made the grid harder to scan, so the box is a
+// deliberate, kept deviation. A CSS grid (rather than flex-wrap's elastic basis) keeps
+// every row's tiles the same width so rows end cleanly instead of raggedly.
 .msh-kpi-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: govuk-spacing(3);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: govuk-spacing(4);
   margin-bottom: govuk-spacing(6);
 }
 
 .msh-kpi-tile {
-  flex: 1 1 150px;
+  display: block;
   border: 1px solid govuk-functional-colour(border);
   padding: govuk-spacing(3);
-  text-align: center;
   text-decoration: none;
   color: govuk-functional-colour(text);
 
@@ -19,16 +24,15 @@
   }
 }
 
-.msh-kpi-tile__label {
-  display: block;
-  @include govuk-font($size: 16);
-  min-height: 2.5em;
-}
-
 .msh-kpi-tile__value {
   display: block;
   @include govuk-font($size: 36, $weight: bold);
-  margin: govuk-spacing(1) 0;
+  margin-bottom: govuk-spacing(1);
+}
+
+.msh-kpi-tile__label {
+  display: block;
+  @include govuk-font($size: 16);
 }
 
 .msh-kpi-tile__delta {

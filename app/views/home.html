@@ -1,0 +1,28 @@
+{#
+The landing page — a hub linking out to each section, mirroring MSH's own authenticated
+home page (src/app/(auth)/home/page.tsx): hero band first, then a plain list of the
+things you can go and look at. The Monthly Overview report itself is just one of those
+destinations now, not the page you land on.
+#}
+{% extends "layouts/main.html" %}
+
+{% set pageName = "Home" %}
+
+{% block content %}
+
+<div class="msh-hero">
+  <div class="govuk-width-container msh-hero__inner">
+    <img class="msh-hero__logo" src="/public/images/nspoclogo2.png" alt="National Space Operations Centre" width="180" height="81">
+    <h1 class="govuk-heading-xl msh-hero__heading">NSpOC Civil Operations Dashboard</h1>
+    <p class="govuk-body-l msh-hero__subtitle">Discovery-phase prototype of the NSpOC Civil Operations Dashboard, connected to the live MSH API.</p>
+  </div>
+</div>
+
+<h2 class="govuk-heading-l">Dashboard sections</h2>
+<ul class="govuk-list govuk-list--bullet">
+  {% for section in mshSections() %}
+    <li><a class="govuk-link govuk-link--no-visited-state" href="{{ section.href }}">{{ section.text }}</a></li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

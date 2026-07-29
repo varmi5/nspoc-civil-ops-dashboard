@@ -2,20 +2,20 @@
 
 {#
 Confirmed via the reentry/conjunction/fragmentation report schemas: Risk is a six-value
-enum — None, Very low, Low, Medium, High, Pending. "Pending" and null both mean "not yet
-assessed" and get the same honest grey "Pending analysis" tag, rather than guessing.
+enum — None, Very low, Low, Medium, High, Pending. Colours match MSH's own riskClasses
+mapping (src/utils/Tags.tsx) verbatim, since that's the canonical risk→colour source of
+truth for the real service. "Pending" and null both mean "not yet assessed" and get the
+same honest blue "Pending analysis" tag, rather than guessing.
 #}
 {% macro riskTag(risk) %}
   {% if risk == "High" or risk == "Critical" %}
     {{ govukTag({ text: risk, classes: "govuk-tag--red" }) }}
   {% elif risk == "Medium" %}
     {{ govukTag({ text: risk, classes: "govuk-tag--yellow" }) }}
-  {% elif risk == "Low" or risk == "Very low" %}
+  {% elif risk == "Low" %}
     {{ govukTag({ text: risk, classes: "govuk-tag--green" }) }}
-  {% elif risk == "None" %}
-    {{ govukTag({ text: risk, classes: "govuk-tag--blue" }) }}
   {% elif risk == "Pending" or not risk %}
-    {{ govukTag({ text: "Pending analysis", classes: "govuk-tag--grey" }) }}
+    {{ govukTag({ text: "Pending analysis", classes: "govuk-tag--blue" }) }}
   {% else %}
     {{ govukTag({ text: risk, classes: "govuk-tag--grey" }) }}
   {% endif %}

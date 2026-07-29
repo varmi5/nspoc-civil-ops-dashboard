@@ -20,7 +20,12 @@ const { warmCache } = require('./lib/msh/cache-warmer')
 // cache-warmer.js for why.
 warmCache()
 
-router.get('/', async (req, res, next) => {
+// The landing page — a hub linking out to each section, mirroring MSH's own
+// authenticated home page. The Monthly Overview report itself lives at its own URL
+// below, same as every other section, rather than being the thing you land on.
+router.get('/', (req, res) => res.render('home'))
+
+router.get('/monthly-overview', async (req, res, next) => {
   try {
     const viewModel = await buildMonthlyOverviewViewModel(req.query.month)
     const summary = buildExecutiveSummary(viewModel, { maxSentences: 2 })

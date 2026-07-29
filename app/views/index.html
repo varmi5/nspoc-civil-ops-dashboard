@@ -14,18 +14,10 @@
 
 {% block content %}
 
-<div class="govuk-grid-row">
-  <div class="govuk-grid-column-two-thirds">
-    <h1 class="govuk-heading-xl">Monthly Overview</h1>
-    <p class="govuk-body-l">{{ viewModel.selectedMonthLabel }}</p>
-  </div>
-  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
-    {{ printLink() }}
-    {{ presentLink("/present/monthly-overview") }}
-  </div>
-</div>
+<h1 class="govuk-heading-xl">Monthly Overview</h1>
+<p class="govuk-body-l">{{ viewModel.selectedMonthLabel }}</p>
 
-{{ monthSelector("/", viewModel.selectedMonth, viewModel.monthOptions) }}
+{{ monthSelector("/monthly-overview", viewModel.selectedMonth, viewModel.monthOptions) }}
 
 {{ summaryPanel(summary, "/summary") }}
 
@@ -43,18 +35,21 @@
 ") }}
 
 <h2 class="govuk-heading-l">Data analysis ({{ viewModel.selectedMonthLabel }})</h2>
-<div class="govuk-grid-row">
+<div class="msh-donut-grid">
   {% for donutItem in viewModel.donuts %}
-    <div class="govuk-grid-column-one-half">
-      <div class="msh-donut-chart-card">
-        <span class="msh-donut-chart-card__badge">{{ mshBadge(donutItem.isLive) }}</span>
-        {{ donutChart(donutItem.title, donutItem.chart) }}
-        {% if donutItem.href %}
-          <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ donutItem.href }}">View {{ donutItem.title }} detail</a></p>
-        {% endif %}
-      </div>
+    <div class="msh-donut-chart-card">
+      <span class="msh-donut-chart-card__badge">{{ mshBadge(donutItem.isLive) }}</span>
+      {{ donutChart(donutItem.title, donutItem.chart) }}
+      {% if donutItem.href %}
+        <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ donutItem.href }}">View {{ donutItem.title }} detail</a></p>
+      {% endif %}
     </div>
   {% endfor %}
+</div>
+
+<div class="govuk-button-group">
+  {{ printLink() }}
+  {{ presentLink("/present/monthly-overview") }}
 </div>
 
 {% endblock %}

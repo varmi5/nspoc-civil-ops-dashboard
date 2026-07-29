@@ -5,13 +5,24 @@ https://prototype-kit.service.gov.uk/docs/how-to-use-layouts
 
 {% extends "govuk-prototype-kit/layouts/govuk-branded.njk" %}
 
+{% from "govuk/components/header/macro.njk" import govukHeader %}
 {% from "govuk/components/service-navigation/macro.njk" import govukServiceNavigation %}
+{% from "govuk/components/breadcrumbs/macro.njk" import govukBreadcrumbs %}
+{% from "govuk/components/footer/macro.njk" import govukFooter %}
+
+{# Mirrors MSH's real Header.tsx: the product name sits inside the black crown header
+   itself (white text, via govukHeader's own productName slot), not in the service
+   navigation bar below — that bar is nav links only, same as MSH's Navigation.tsx. #}
+{% block govukHeader %}
+  {{ govukHeader({
+    productName: serviceName,
+    homepageUrl: "/"
+  }) }}
+{% endblock %}
 
 {% block govukServiceNavigation %}
   <div class="govuk-!-display-none-print">
     {{ govukServiceNavigation({
-      serviceName: serviceName,
-      serviceUrl: serviceUrl,
       navigation: mshNavigation(currentSection)
     }) }}
   </div>
@@ -21,6 +32,10 @@ https://prototype-kit.service.gov.uk/docs/how-to-use-layouts
    monthly report's own cover-page marking, since this prototype pulls genuine
    OFFICIAL-classified live data from MSH. #}
 {% block beforeContent %}
+  {% set crumbs = mshBreadcrumbs(currentSection, pageName) %}
+  {% if crumbs %}
+    {{ govukBreadcrumbs({ items: crumbs }) }}
+  {% endif %}
   <div class="official-banner">OFFICIAL</div>
   {# Lives outside #main-content so it survives the fast-nav content swap in
      application.js — announces when a period/month filter finishes updating, since
@@ -29,6 +44,29 @@ https://prototype-kit.service.gov.uk/docs/how-to-use-layouts
 {% endblock %}
 
 {% block content %}{% endblock %}
+
+{# Adds MSH-style footer navigation columns (see Footer.tsx / AppConfig.footerNavigation)
+   on top of the kit's own dev-only footer links (Manage your prototype / Clear data),
+   which this re-declares since the govukFooter block fully replaces the kit's version. #}
+{% block govukFooter %}
+  {% if GOVUKPrototypeKit.isDevelopment %}
+    {% set footerItems = [
+      { href: "/manage-prototype", text: "Manage your prototype" },
+      { href: "/manage-prototype/clear-data", text: "Clear data" }
+    ] %}
+  {% else %}
+    {% set footerItems = [
+      { href: "/manage-prototype/clear-data", text: "Clear data" }
+    ] %}
+  {% endif %}
+  {{ govukFooter({
+    navigation: mshFooterNavigation(),
+    meta: {
+      items: footerItems,
+      visuallyHiddenTitle: "Footer links"
+    }
+  }) }}
+{% endblock %}
 
 {% block footer %}
   {{ super() }}

@@ -15,16 +15,8 @@
 
 {% block content %}
 
-<div class="govuk-grid-row">
-  <div class="govuk-grid-column-two-thirds">
-    <h1 class="govuk-heading-xl">Collision &amp; Fragmentation</h1>
-  </div>
-  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
-    {{ mshBadge(viewModel.isLive) }}
-    {{ printLink() }}
-    {{ presentLink("/present/collision-fragmentation") }}
-  </div>
-</div>
+{{ mshBadge(viewModel.isLive) }}
+<h1 class="govuk-heading-xl">Collision &amp; Fragmentation</h1>
 
 <div class="msh-kpi-grid">
   {{ kpiTile({ label: "Conjunction Events Tracked (current snapshot)", value: viewModel.collisionCount, isLive: viewModel.collisionCountIsLive }) }}
@@ -48,16 +40,12 @@
 {{ trendView("fragmentation-trend", "Fragmentation incidents tracked", viewModel.fragmentationTrend, viewModel.fragmentationTrendChart) }}
 
 <h2 class="govuk-heading-l">Data analysis</h2>
-<div class="govuk-grid-row">
-  <div class="govuk-grid-column-one-half">
-    <div class="msh-donut-chart-card">
-      {{ donutChart("Source of Risk (by interest rating)", viewModel.riskDonut) }}
-    </div>
+<div class="msh-donut-grid">
+  <div class="msh-donut-chart-card">
+    {{ donutChart("Source of Risk (by interest rating)", viewModel.riskDonut) }}
   </div>
-  <div class="govuk-grid-column-one-half">
-    <div class="msh-donut-chart-card">
-      {{ donutChart("Fragmentation Cause", viewModel.fragTypeDonut) }}
-    </div>
+  <div class="msh-donut-chart-card">
+    {{ donutChart("Fragmentation Cause", viewModel.fragTypeDonut) }}
   </div>
 </div>
 
@@ -122,5 +110,10 @@
     {% endfor %}
   </tbody>
 </table>
+
+<div class="govuk-button-group">
+  {{ printLink() }}
+  {{ presentLink("/present/collision-fragmentation") }}
+</div>
 
 {% endblock %}

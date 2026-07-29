@@ -8,15 +8,8 @@
 
 {% block content %}
 
-<div class="govuk-grid-row">
-  <div class="govuk-grid-column-two-thirds">
-    <h1 class="govuk-heading-xl">Summary</h1>
-    <p class="govuk-body-l">{{ viewModel.selectedMonthLabel }}</p>
-  </div>
-  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
-    {{ printLink() }}
-  </div>
-</div>
+<h1 class="govuk-heading-xl">Summary</h1>
+<p class="govuk-body-l">{{ viewModel.selectedMonthLabel }}</p>
 
 {{ monthSelector("/summary", viewModel.selectedMonth, viewModel.monthOptions) }}
 
@@ -29,6 +22,9 @@
   <p class="govuk-body-l">{{ sentence }}</p>
 {% endfor %}
 
-<p class="govuk-body"><a class="govuk-link" href="/">View the full Monthly Overview</a></p>
+<div class="govuk-button-group">
+  {{ printLink() }}
+  <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/monthly-overview">View the full Monthly Overview</a>
+</div>
 
 {% endblock %}

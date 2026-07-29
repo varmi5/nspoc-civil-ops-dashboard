@@ -1,5 +1,3 @@
 {% macro presentLink(href) %}
-  <p class="govuk-body govuk-!-display-none-print">
-    <a class="govuk-link" href="{{ href }}">Present this section</a>
-  </p>
+  <a class="govuk-button govuk-button--secondary govuk-!-display-none-print" data-module="govuk-button" href="{{ href }}">Present this section</a>
 {% endmacro %}

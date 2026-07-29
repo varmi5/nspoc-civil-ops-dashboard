@@ -25,8 +25,8 @@ Renders one KPI tile. `params`:
   {% else %}
     <div class="msh-kpi-tile">
   {% endif %}
-      <span class="msh-kpi-tile__label">{{ params.label }}</span>
       <span class="msh-kpi-tile__value">{{ params.value }}{% if params.unit %} {{ params.unit }}{% endif %}</span>
+      <span class="msh-kpi-tile__label">{{ params.label }}</span>
       {% if params.delta %}
         <span class="msh-kpi-tile__delta {{ deltaClass }}">{{ params.delta }}</span>
       {% endif %}

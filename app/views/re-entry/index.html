@@ -16,16 +16,8 @@
 
 {% block content %}
 
-<div class="govuk-grid-row">
-  <div class="govuk-grid-column-two-thirds">
-    <h1 class="govuk-heading-xl">Re-Entry Early Warning</h1>
-  </div>
-  <div class="govuk-grid-column-one-third govuk-!-text-align-right">
-    {{ mshBadge(viewModel.isLive) }}
-    {{ printLink() }}
-    {{ presentLink("/present/re-entry") }}
-  </div>
-</div>
+{{ mshBadge(viewModel.isLive) }}
+<h1 class="govuk-heading-xl">Re-Entry Early Warning</h1>
 
 <div class="msh-kpi-grid">
   {{ kpiTile({ label: "Uncontrolled Re-Entries Tracked (last " + viewModel.trendMonths + " month" + ("s" if viewModel.trendMonths != 1) + ")", value: viewModel.periodTotalCount }) }}
@@ -79,5 +71,10 @@
     }
   ]
 }) }}
+
+<div class="govuk-button-group">
+  {{ printLink() }}
+  {{ presentLink("/present/re-entry") }}
+</div>
 
 {% endblock %}

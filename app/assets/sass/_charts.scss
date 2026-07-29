@@ -1,3 +1,13 @@
+// A CSS grid (rather than govuk-grid-row/column-one-half, which leaves a half-empty
+// row whenever the donut count is odd) keeps every donut card the same width and closes
+// up incomplete rows cleanly instead of leaving a ragged gap.
+.msh-donut-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: govuk-spacing(4);
+  margin-bottom: govuk-spacing(6);
+}
+
 // Fixed palette shared between the SVG donut segments and their legend swatches, so a
 // segment and its label are always identifiable even without colour (screen readers and
 // print already get the real value via the legend text, not the colour).
@@ -12,8 +22,24 @@ $msh-chart-palette: (
   "black-tint-25"
 );
 
+// Brand hues lifted verbatim from MSH's own chart palette
+// (src/components/charts/base/theme.ts: nspocBlue/nspocGreen/nspocYellow/nspocRed), so
+// this dashboard's charts read as the same series as the real service's.
+$msh-brand-blue: #007cc8;
+$msh-brand-green: #92d050;
+$msh-brand-orange: #f46a25;
+$msh-brand-red: #c00000;
+
 @function msh-chart-colour($token) {
-  @if $token == "black-tint-95" {
+  @if $token == "blue" {
+    @return $msh-brand-blue;
+  } @else if $token == "green" {
+    @return $msh-brand-green;
+  } @else if $token == "orange" {
+    @return $msh-brand-orange;
+  } @else if $token == "red" {
+    @return $msh-brand-red;
+  } @else if $token == "black-tint-95" {
     @return govuk-colour("black", $variant: "tint-95");
   } @else if $token == "black-tint-25" {
     @return govuk-colour("black", $variant: "tint-25");
