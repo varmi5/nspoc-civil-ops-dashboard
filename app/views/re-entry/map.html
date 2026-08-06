@@ -19,8 +19,14 @@
 </p>
 
 {{ explainer("About this map", "
-  <p class='govuk-body'>This is a self-drawn latitude/longitude grid, not a map with real coastlines — there's no licensed map asset in hand yet, and sending these coordinates through a third-party map tile provider (Google Maps, Mapbox, OpenStreetMap) would send real OFFICIAL-classified location data to that provider's servers. Every marker is genuinely live and interactive: hover or select a marker to see the object, and select it to open its full Tracking and Impact Prediction (TIP) detail.</p>
-  <p class='govuk-body'>Use the Zoom in / Zoom out / Reset view buttons, scroll to zoom, or drag to pan. Markers are colour-coded by risk rating — grey means the object is still pending analyst review.</p>
+  <p class='govuk-body'>This is a self-drawn latitude/longitude grid, not a map with real coastlines. We don't have a licensed map asset yet, and sending these coordinates through a third-party tile provider (Google Maps, Mapbox, OpenStreetMap) would send real OFFICIAL-classified location data to that provider's servers.</p>
+  <p class='govuk-body'>Every marker is live and interactive:</p>
+  <ul class='govuk-list govuk-list--bullet'>
+    <li>Hover or select a marker to see the object.</li>
+    <li>Select it again to open its full Tracking and Impact Prediction (TIP) detail.</li>
+    <li>Use Zoom in, Zoom out or Reset view, scroll to zoom, or drag to pan.</li>
+  </ul>
+  <p class='govuk-body'>Markers are colour-coded by risk rating. Grey means the object is still pending analyst review.</p>
   <p class='govuk-body'><a class='govuk-link' href='/data-sources'>See the exact endpoint behind this map</a>.</p>
 ") }}
 

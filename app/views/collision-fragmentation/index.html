@@ -27,14 +27,18 @@
 </div>
 
 {{ explainer("What do \"conjunction\" and \"fragmentation\" mean?", "
-  <p class='govuk-body'>A <strong>conjunction</strong> is the technical term for two tracked objects passing close together in orbit — this is what a collision risk is called before (hopefully) nothing happens. MSH tracks these as <code>conjunction-events</code>. A <strong>fragmentation</strong> is a breakup incident — an object splits into new trackable debris — tracked as <code>fragmentation-events</code>.</p>
-  <p class='govuk-body'>Most conjunctions are routine wide misses with no computed probability at all — the general list below is bucketed by NSpOC's own \"interest\" rating (Low/Medium/High) rather than a number. The \"Requires Analysis\" table further down uses a dedicated MSH endpoint that only surfaces events past a probability threshold, with a real computed collision probability for each.</p>
+  <p class='govuk-body'>Two terms come up a lot on this page:</p>
+  <ul class='govuk-list govuk-list--bullet'>
+    <li><strong>Conjunction:</strong> two tracked objects passing close together in orbit. It's what we call a collision risk before it's assessed. MSH tracks these as <code>conjunction-events</code>.</li>
+    <li><strong>Fragmentation:</strong> a breakup incident, where an object splits into new trackable debris. MSH tracks these as <code>fragmentation-events</code>.</li>
+  </ul>
+  <p class='govuk-body'>Most conjunctions are routine wide misses with no computed probability. The list below buckets them by NSpOC's own \"interest\" rating (Low, Medium, High) instead. The \"Requires Analysis\" table further down is different: it uses a dedicated MSH endpoint that only surfaces events past a probability threshold, so each row has a real computed collision probability.</p>
   <p class='govuk-body'><a class='govuk-link' href='/data-sources'>See the exact endpoint behind every figure on this page</a>.</p>
 ") }}
 
 <h2 class="govuk-heading-l">Conjunction events tracked</h2>
 {{ govukInsetText({
-  html: "Almost all of these are routine, low-probability screenings — see \"Events requiring analysis\" further down for the small subset that's actually significant. These monthly totals also run higher than NSpOC's own reported monthly figures. Confirmed directly against MSH's full API specification: no endpoint or filter currently produces the narrower, analyst-reviewed figure NSpOC actually reports — this is a genuine gap in what MSH exposes today, not something a different query can fix. Raised with the MSH/NSpOC team; see <a class='govuk-link' href='/data-sources'>Data sources</a> for the full investigation."
+  html: "<p class='govuk-body'>Almost all of these are routine, low-probability screenings. See \"Events requiring analysis\" further down for the small subset that's actually significant.</p><p class='govuk-body'>These monthly totals run higher than NSpOC's own reported figures. We checked MSH's full API spec: there's no endpoint or filter that produces the narrower, analyst-reviewed figure NSpOC reports. That's a genuine gap in what MSH exposes today, not something we can query around. We've raised it with the MSH/NSpOC team; see <a class='govuk-link' href='/data-sources'>Data sources</a> for the full investigation.</p>"
 }) }}
 {{ periodSelector("/collision-fragmentation", viewModel.trendMonths, viewModel.trendPeriods, "months", "month") }}
 <p class="govuk-body-s msh-month-strip__scroll-hint">Latest month first — scroll right for earlier months →</p>
