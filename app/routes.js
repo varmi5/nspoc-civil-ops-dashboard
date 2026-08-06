@@ -105,6 +105,8 @@ router.get('/data-sources', (req, res, next) => {
   }
 })
 
+router.get('/tech-docs', (req, res) => res.render('tech-docs/index'))
+
 router.get('/present', (req, res) => res.redirect('/present/summary'))
 
 router.get('/present/summary', async (req, res, next) => {

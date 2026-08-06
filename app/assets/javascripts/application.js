@@ -13,6 +13,26 @@ function enhancePrintLinks (root) {
   })
 }
 
+// Copy button on tech docs code blocks (macros/code-block.njk) — hidden until here, same
+// reasoning as enhancePrintLinks: copying to the clipboard needs JS, so there's no point
+// showing the button to a no-JS visitor at all.
+function enhanceCodeBlocks (root) {
+  root.querySelectorAll('.msh-code-block').forEach((block) => {
+    const button = block.querySelector('.msh-code-block__copy')
+    const pre = block.querySelector('.msh-code-block__pre')
+    if (!button || !pre || button.dataset.mshEnhanced) return
+    button.dataset.mshEnhanced = 'true'
+    button.classList.remove('msh-code-block__copy--hidden')
+
+    button.addEventListener('click', () => {
+      navigator.clipboard.writeText(pre.textContent).then(() => {
+        button.textContent = 'Copied'
+        setTimeout(() => { button.textContent = 'Copy' }, 2000)
+      })
+    })
+  })
+}
+
 function enhanceMonthSelectors (root) {
   root.querySelectorAll('.js-month-selector').forEach((select) => {
     select.addEventListener('change', () => select.form.requestSubmit())
@@ -45,6 +65,7 @@ function enhanceTrendViews (root) {
 
 function enhance (root) {
   enhancePrintLinks(root)
+  enhanceCodeBlocks(root)
   enhanceMonthSelectors(root)
   enhanceTrendViews(root)
 }

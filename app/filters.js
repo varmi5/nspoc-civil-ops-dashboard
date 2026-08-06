@@ -55,7 +55,10 @@ govukPrototypeKit.views.addFunction('mshFooterNavigation', () => [
   {
     title: 'About this data',
     columns: 1,
-    items: [{ href: '/data-sources', text: 'Data sources' }]
+    items: [
+      { href: '/data-sources', text: 'Data sources' },
+      { href: '/tech-docs', text: 'Tech docs' }
+    ]
   }
 ])
 

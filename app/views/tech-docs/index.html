@@ -1,0 +1,187 @@
+{% extends "layouts/main.html" %}
+
+{% set pageName = "Tech docs" %}
+
+{% from "macros/print-link.njk" import printLink %}
+{% from "macros/code-block.njk" import codeBlock %}
+
+{% block content %}
+
+<h1 class="govuk-heading-xl">Tech docs</h1>
+<p class="govuk-body">This page explains how the dashboard is built and how to run it. The endpoint and connection status behind each number is listed separately, on the Data sources page.</p>
+
+<h2 class="govuk-heading-m">On this page</h2>
+<ul class="govuk-list govuk-list--bullet">
+  <li><a class="govuk-link" href="#running-it-locally">Running it locally</a></li>
+  <li><a class="govuk-link" href="#repository-overview">Repository overview</a></li>
+  <li><a class="govuk-link" href="#pages">Pages</a></li>
+  <li><a class="govuk-link" href="#calculations">Calculations</a></li>
+  <li><a class="govuk-link" href="#data-sources">Data sources</a></li>
+  <li><a class="govuk-link" href="#decisions">Decisions</a></li>
+  <li><a class="govuk-link" href="#open-questions">Open questions</a></li>
+  <li><a class="govuk-link" href="#glossary">Glossary</a></li>
+</ul>
+
+<h2 class="govuk-heading-l" id="running-it-locally">Running it locally</h2>
+<p class="govuk-body">Node 24 or higher is required. This is pinned in <code>.nvmrc</code>.</p>
+
+<h3 class="govuk-heading-s">1. Clone the repository</h3>
+{% call codeBlock() %}
+git clone https://github.com/varmi5/nspoc-civil-ops-dashboard.git
+cd nspoc-civil-ops-dashboard
+{% endcall %}
+
+<h3 class="govuk-heading-s">2. Install dependencies</h3>
+{% call codeBlock() %}
+npm install
+{% endcall %}
+
+<h3 class="govuk-heading-s">3. Set the environment variables</h3>
+<p class="govuk-body">Copy the example environment file and add the MSH client ID and secret.</p>
+{% call codeBlock() %}
+cp .env.example .env
+{% endcall %}
+<p class="govuk-body">Without MSH credentials the dashboard still runs. Every MSH figure shows "No live data source connected" instead of a value. Every variable in <code>.env.example</code> has a comment explaining what it does.</p>
+
+<h3 class="govuk-heading-s">4. Start the dev server</h3>
+{% call codeBlock() %}
+npm run dev
+{% endcall %}
+<p class="govuk-body">The dashboard runs at <code>http://localhost:3000</code> and reloads automatically on save.</p>
+
+<h2 class="govuk-heading-l" id="repository-overview">Repository overview</h2>
+<p class="govuk-body">The dashboard is one GitHub repository, <code>nspoc-civil-ops-dashboard</code>. There is no separate frontend, backend, or infrastructure repository, and no database.</p>
+<ul class="govuk-list govuk-list--bullet">
+  <li><code>app/routes.js</code>, defines every page's URL and what runs when it is requested.</li>
+  <li><code>app/lib/view-models/</code>, one file per dashboard page, builds the data that page needs.</li>
+  <li><code>app/lib/msh/</code>, the MSH API client, login handling, caching, and the status logic described below.</li>
+  <li><code>app/lib/space-weather/</code>, the same, for the NOAA feed.</li>
+  <li><code>app/views/</code>, page templates, with shared macros in <code>app/views/macros/</code>.</li>
+  <li><code>app/config/sections.js</code> and <code>app/config/data-sources.js</code>, drive the navigation and the Data sources page.</li>
+</ul>
+<p class="govuk-body">The dashboard is hosted on Railway. A push to <code>main</code> triggers a deploy automatically.</p>
+
+<h2 class="govuk-heading-l" id="pages">Pages</h2>
+<p class="govuk-body">Every page follows the same pattern. A route calls a view model, the view model asks <code>getSectionData</code> for its figures, and the status returned decides what is shown. The Re-Entry page is used below as a worked example.</p>
+
+<h3 class="govuk-heading-s">Route</h3>
+<p class="govuk-body"><code>app/routes.js</code>:</p>
+{% call codeBlock() %}
+router.get('/re-entry', async (req, res, next) => {
+  try {
+    const viewModel = await buildReEntryViewModel(req.query.months)
+    res.render('re-entry/index', { viewModel })
+  } catch (err) {
+    next(err)
+  }
+})
+{% endcall %}
+<p class="govuk-body">The route does not call MSH directly. It asks a view model for data, then renders a template with the result.</p>
+
+<h3 class="govuk-heading-s">View model</h3>
+<p class="govuk-body"><code>buildReEntryViewModel</code>, in <code>app/lib/view-models/re-entry.js</code>, calls <code>getSectionData</code> rather than the MSH client directly. Every view model does this.</p>
+
+<h3 class="govuk-heading-s">getSectionData</h3>
+<p class="govuk-body"><code>app/lib/msh/get-section-data.js</code>:</p>
+{% call codeBlock() %}
+async function getSectionData (sectionKey, { liveFetcher }) {
+  if (!dataSource.isConfiguredForLive(sectionKey)) {
+    return { data: null, status: STATUS.NOT_CONNECTED }
+  }
+
+  try {
+    const data = await liveFetcher()
+    return { data, status: STATUS.LIVE }
+  } catch (err) {
+    console.error(`MSH live fetch failed for section "${sectionKey}": ${err.message}`)
+    return { data: null, status: STATUS.UNAVAILABLE, httpStatus: err.httpStatus }
+  }
+}
+{% endcall %}
+<p class="govuk-body">The status returned is always one of three values, defined in <code>app/lib/msh/status.js</code>:</p>
+{% call codeBlock() %}
+const STATUS = {
+  LIVE: 'live',
+  UNAVAILABLE: 'unavailable',
+  NOT_CONNECTED: 'not-connected'
+}
+{% endcall %}
+<p class="govuk-body">This function never returns sample or fixture data. If a fetch fails, <code>data</code> is <code>null</code> and <code>status</code> explains why.</p>
+
+<h3 class="govuk-heading-s">Status badge</h3>
+<p class="govuk-body"><code>app/views/macros/badge.njk</code> turns the status into the tag shown on the page:</p>
+{% call codeBlock() %}
+{% raw %}{% macro mshBadge(status) %}
+  {% if status == "live" %}
+    {{ govukTag({ text: "Live from MSH API", classes: "govuk-tag--green" }) }}
+  {% elif status == "unavailable" %}
+    {{ govukTag({ text: "No data available", classes: "govuk-tag--red" }) }}
+  {% else %}
+    {{ govukTag({ text: "No live data source connected", classes: "govuk-tag--grey" }) }}
+  {% endif %}
+{% endmacro %}{% endraw %}
+{% endcall %}
+<p class="govuk-body">This is the same chain for every page on the dashboard: route, view model, <code>getSectionData</code>, status badge. Only the view model and the MSH endpoint change from page to page.</p>
+
+<h2 class="govuk-heading-l" id="calculations">Calculations</h2>
+<p class="govuk-body"><code>app/lib/view-models/monthly-overview.js</code> calculates month-on-month change with <code>computeDelta</code>:</p>
+{% call codeBlock() %}
+function computeDelta (current, previous, { goodWhenDown } = {}) {
+  if (current === null || current === undefined || previous === null || previous === undefined) {
+    return { text: null, deltaGood: undefined }
+  }
+  const diff = current - previous
+  const pct = previous === 0 ? 0 : Math.round((Math.abs(diff) / previous) * 100)
+  const sign = diff >= 0 ? '+' : '-'
+  return {
+    text: `${sign} ${Math.abs(diff)} (${pct}%)`,
+    deltaGood: goodWhenDown === undefined ? undefined : (diff <= 0) === goodWhenDown
+  }
+}
+{% endcall %}
+<p class="govuk-body">This takes the current and previous month's figures, calculates the difference and the percentage change, and marks the result good or bad using <code>goodWhenDown</code>. A rise in launches is good, a rise in collision risk is not. If either figure is missing, no comparison is shown.</p>
+
+<h2 class="govuk-heading-l" id="data-sources">Data sources</h2>
+<p class="govuk-body">Two services provide live data:</p>
+<ul class="govuk-list govuk-list--bullet">
+  <li><strong>Monitor Space Hazards (MSH)</strong>, the main source. Requires a client ID and secret. A separate test version of MSH exists, with its own separate credentials.</li>
+  <li><strong>NOAA SWPC</strong>, a public feed used only by the Space Weather page. No login required.</li>
+</ul>
+<p class="govuk-body">Every figure on the dashboard, its exact endpoint, and its current connection status are listed on the <a class="govuk-link" href="/data-sources">Data sources</a> page.</p>
+
+<h2 class="govuk-heading-l" id="decisions">Decisions</h2>
+
+<h3 class="govuk-heading-s">No database</h3>
+<p class="govuk-body">Every page fetches its data when it is requested. Nothing is stored.</p>
+<p class="govuk-body">Reason: there is nothing to migrate or back up, and every number has to prove where it came from on each request.</p>
+
+<h3 class="govuk-heading-s">No fixture fallback in production</h3>
+<p class="govuk-body">Earlier versions of the dashboard showed sample data when a live fetch failed. This was removed.</p>
+<p class="govuk-body">Reason: a number is either real or marked missing. It is never a stored guess.</p>
+
+<h3 class="govuk-heading-s">No third-party map provider</h3>
+<p class="govuk-body">The Re-Entry map draws its own grid instead of using a map tile service.</p>
+<p class="govuk-body">Reason: avoids sending object-tracking queries to an external company.</p>
+
+<h2 class="govuk-heading-l" id="open-questions">Open questions</h2>
+<ul class="govuk-list govuk-list--bullet">
+  <li>The collision risk figure reported for the current month does not match NSpOC's own reported figure. No MSH endpoint currently produces the narrower figure NSpOC reports.</li>
+  <li>Space weather ratings are a first draft. NSpOC has not signed off on them.</li>
+  <li>Space weather uses NOAA, a US feed. MOSWOC, the Met Office's own service, has been identified as the correct source. This has not been implemented.</li>
+  <li>There is no automated test suite. Changes are checked manually, and with the scripts in <code>scripts/</code>.</li>
+</ul>
+
+<h2 class="govuk-heading-l" id="glossary">Glossary</h2>
+<ul class="govuk-list govuk-list--bullet">
+  <li><strong>Conjunction</strong>, a predicted close pass between two objects in orbit.</li>
+  <li><strong>Fragmentation</strong>, when an object breaks into multiple pieces, from a collision or otherwise.</li>
+  <li><strong>CDM</strong> (Conjunction Data Message), an official warning about a possible collision. The same event can get several CDMs as new information comes in.</li>
+  <li><strong>TCA</strong> (Time of Closest Approach), when two objects are predicted to be nearest each other.</li>
+  <li><strong>Epoch</strong>, a fixed point in time used as a reference for orbital data.</li>
+</ul>
+
+<div class="govuk-button-group">
+  {{ printLink() }}
+</div>
+
+{% endblock %}

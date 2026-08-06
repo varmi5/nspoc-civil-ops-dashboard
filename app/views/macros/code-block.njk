@@ -1,0 +1,6 @@
+{% macro codeBlock() %}
+<div class="msh-code-block">
+  <button type="button" class="msh-code-block__copy msh-code-block__copy--hidden">Copy</button>
+  <pre class="msh-code-block__pre">{{ caller() | trim }}</pre>
+</div>
+{% endmacro %}
