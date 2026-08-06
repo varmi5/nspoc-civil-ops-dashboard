@@ -2,6 +2,7 @@ const { getSectionData } = require('../msh/get-section-data')
 const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
 const { buildBarChart } = require('../charts/bar-chart')
+const { STATUS, worstStatus } = require('../msh/status')
 const { highestRisk } = require('../format-risk')
 const { formatDate, formatDateTime, formatMonth } = require('../format-date')
 const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths } = require('../date-range')
@@ -135,11 +136,9 @@ function firstDefined (...values) {
 // object's TIP history is best-effort — a failure on one object's TIP lookup shouldn't
 // take down the whole page, it just falls back to "Unknown"/unplottable for that object.
 // catalogMap is the one shared /v1/satellites/with-metadata fetch (see
-// fetchSatelliteCatalogMap above) — a plain lookup here, not a network call.
-async function attachLatestLocation (event, listIsLive, catalogMap) {
-  if (!listIsLive) {
-    return { ...event, location: 'Unknown', latitude: null, longitude: null }
-  }
+// fetchSatelliteCatalogMap above) — a plain lookup here, not a network call. Only ever
+// called for events that came from a live list fetch (see loadEnrichedReentryEvents).
+async function attachLatestLocation (event, catalogMap) {
   const tips = await fetchTipsForNoradId(event.norad_id).catch(() => [])
   const latestTip = sortTipsByMostRecent(tips)[0]
   const catalog = catalogMap.get(String(event.norad_id)) || null
@@ -160,21 +159,19 @@ async function attachLatestLocation (event, listIsLive, catalogMap) {
 // more live call (TIP history; satellite catalog is now one shared call for the whole
 // batch, see fetchSatelliteCatalogMap above), so filtering first keeps that fan-out
 // bounded regardless of how large the raw fetch or the matching period turns out to be.
+// When the list itself isn't live, there's nothing to enrich — no fixture stand-in, just
+// an empty, status-flagged result.
 async function loadEnrichedReentryEvents ({ months, cap } = {}) {
-  const listResult = await getSectionData('re-entry', { liveFetcher: fetchReentryListRaw, fixturePath: 're-entry/objects.json' })
-  const { events: selectedEvents, totalInPeriod, truncated } = listResult.isLive
-    ? selectAndCap(listResult.data, { months, cap })
-    : { events: listResult.data, totalInPeriod: listResult.data.length, truncated: false }
+  const listResult = await getSectionData('re-entry', { liveFetcher: fetchReentryListRaw })
 
-  // One shared catalog fetch for however many objects are selected, not one per object —
-  // see fetchSatelliteCatalogMap above. Only fetched when the list itself is live: no
-  // point making a live call here just to enrich fixture-fallback data.
-  const catalogMap = listResult.isLive ? await tryFetchSatelliteCatalogMap() : new Map()
+  if (listResult.status !== STATUS.LIVE) {
+    return { status: listResult.status, events: [], totalInPeriod: 0, truncated: false }
+  }
 
-  const events = await Promise.all(
-    selectedEvents.map((event) => attachLatestLocation(event, listResult.isLive, catalogMap))
-  )
-  return { isLive: listResult.isLive, events, totalInPeriod, truncated }
+  const { events: selectedEvents, totalInPeriod, truncated } = selectAndCap(listResult.data, { months, cap })
+  const catalogMap = await tryFetchSatelliteCatalogMap()
+  const events = await Promise.all(selectedEvents.map((event) => attachLatestLocation(event, catalogMap)))
+  return { status: STATUS.LIVE, events, totalInPeriod, truncated }
 }
 
 // A "sleek, scrollable" tab panel rather than a page-length table needs a sensible
@@ -188,14 +185,14 @@ const TRACKED_OBJECTS_CAP = 60
 async function buildReEntryViewModel (requestedMonths) {
   const months = resolveTrendPeriod(requestedMonths)
 
-  const [{ isLive: listIsLive, events: enrichedEvents, totalInPeriod, truncated }, trendResult] = await Promise.all([
+  const [listResult, trendResult] = await Promise.all([
     loadEnrichedReentryEvents({ months, cap: TRACKED_OBJECTS_CAP }),
-    getSectionData('re-entry', { liveFetcher: () => fetchMonthlyTrend(months), fixturePath: 're-entry/trend.json' })
+    getSectionData('re-entry', { liveFetcher: () => fetchMonthlyTrend(months) })
   ])
 
-  // Fixture data is a fixed 12-month sample — trim it to match whatever period was
-  // requested so the fallback view stays visually consistent with the live one.
-  const trendRows = trendResult.isLive ? trendResult.data : trendResult.data.slice(-months)
+  const status = worstStatus(listResult.status, trendResult.status)
+  const { events: enrichedEvents, totalInPeriod, truncated } = listResult
+  const trendRows = trendResult.status === STATUS.LIVE ? trendResult.data : []
 
   // The KPI tiles above the trend strip summarise the SAME selected period, rather than
   // a separately-scoped "lifetime" stats call — otherwise the tiles and the strip below
@@ -240,7 +237,7 @@ async function buildReEntryViewModel (requestedMonths) {
   }))
 
   return {
-    isLive: listIsLive && trendResult.isLive,
+    status,
     periodTotalCount,
     periodAlertCount,
     trend,
@@ -266,27 +263,35 @@ async function fetchReentryByNoradId (noradId) {
   return mshRequest(`/v1/reentry-events/by-norad-id/${noradId}`)
 }
 
+// Two distinct "no event" outcomes now that fixture fallback no longer masks the
+// difference: the live call can fail with a 404 (MSH itself says this norad ID doesn't
+// exist — a real 404 on this page too), or it can fail some other way, e.g. a timeout or
+// 5xx (MSH is unreachable right now for what may be a perfectly real object — a "data
+// unavailable" page, not a 404). Confirmed live: MSH's by-norad-id lookup itself returns
+// an HTTP error for an unknown ID rather than a 200 with an empty body, so the distinction
+// has to be made from the caught error's status, not from a falsy response body.
 async function buildReEntryObjectViewModel (noradId) {
   const [detailResult, tipsResult, catalog] = await Promise.all([
-    getSectionData('re-entry', {
-      liveFetcher: () => fetchReentryByNoradId(noradId),
-      fixturePath: 're-entry/tip/starlink-1735.json'
-    }),
-    getSectionData('re-entry', {
-      liveFetcher: () => fetchTipsForNoradId(noradId),
-      fixturePath: 're-entry/tip/starlink-1735-history.json'
-    }),
+    getSectionData('re-entry', { liveFetcher: () => fetchReentryByNoradId(noradId) }),
+    getSectionData('re-entry', { liveFetcher: () => fetchTipsForNoradId(noradId) }),
     tryFetchSatelliteCatalog(noradId)
   ])
 
+  if (detailResult.status === STATUS.UNAVAILABLE && detailResult.httpStatus === 404) {
+    return null
+  }
+
+  const status = worstStatus(detailResult.status, tipsResult.status)
+
+  if (status !== STATUS.LIVE) {
+    return { status, noradId, notFound: false }
+  }
+
   const event = detailResult.data
+
   const tips = Array.isArray(tipsResult.data) ? tipsResult.data : [tipsResult.data]
   const sortedTips = sortTipsByMostRecent(tips)
   const latestTip = sortedTips[0] || null
-
-  if (!event) {
-    return null
-  }
 
   // reentry-events almost never carries these catalog fields itself (see fetchSatelliteCatalog
   // above) — fall back to the object's satellite catalog record, which does.
@@ -298,7 +303,7 @@ async function buildReEntryObjectViewModel (noradId) {
   const internationalDesignator = firstDefined(event.international_designator, catalog && catalog.international_designator)
 
   return {
-    isLive: detailResult.isLive && tipsResult.isLive,
+    status: STATUS.LIVE,
     noradId,
     objectName: event.object_name,
     objectType: bucketObjectType(event.object_type),
@@ -324,7 +329,7 @@ async function buildReEntryObjectViewModel (noradId) {
 async function buildReEntryMapViewModel () {
   // Unchanged from this map's original behaviour — no period filter, just the 30 most
   // recent by decay date — the period selector above only scopes the table, not the map.
-  const { isLive, events } = await loadEnrichedReentryEvents({ months: null, cap: 30 })
+  const { status, events } = await loadEnrichedReentryEvents({ months: null, cap: 30 })
 
   const plottable = events.filter((event) => hasResolvedLocation(event))
 
@@ -343,7 +348,7 @@ async function buildReEntryMapViewModel () {
   })
 
   return {
-    isLive,
+    status,
     markers,
     plottedCount: markers.length,
     totalCount: events.length,

@@ -16,7 +16,7 @@
 
 {% block content %}
 
-{{ mshBadge(viewModel.isLive) }}
+{{ mshBadge(viewModel.status) }}
 <h1 class="govuk-heading-xl">Re-Entry Early Warning</h1>
 
 <div class="msh-kpi-grid">
@@ -26,9 +26,10 @@
 </div>
 
 {{ explainer("What do these figures mean, and where do they come from?", "
-  <p class='govuk-body'>Figures marked <strong>Live from MSH API</strong> are fetched directly from the Monitor Space Hazards service each time this page loads. Figures marked <strong>Sample data</strong> are illustrative placeholders because no confirmed live source exists for that figure yet.</p>
+  <p class='govuk-body'>Figures marked <strong>Live from MSH API</strong> are fetched directly from the Monitor Space Hazards service each time this page loads. If MSH doesn't respond, the affected figures show <strong>No data available</strong> rather than an old or placeholder number.</p>
   <p class='govuk-body'>“Objects Analysed for Risk” counts objects where an analyst has completed a risk assessment (atmospheric, human casualty or fragments risk). Most currently-tracked objects show <strong>Pending analysis</strong> because that review normally happens closer to, or after, the predicted re-entry date.</p>
   <p class='govuk-body'>The reporting period below (1 to 24 months) controls both the trend strip and the tracked objects tabs further down — it isn't fixed to a single month. There's no date-range filter on MSH's re-entry list itself, so the full tracked archive is fetched once and the selected period is applied to it here.</p>
+  <p class='govuk-body'><a class='govuk-link' href='/data-sources'>See the exact endpoint behind every figure on this page</a>.</p>
 ") }}
 
 <h2 class="govuk-heading-l">Number of re-entries tracked</h2>
@@ -37,7 +38,7 @@
 {{ trendView("reentry-trend", "Number of re-entries tracked", viewModel.trend, viewModel.trendChart) }}
 
 <h2 class="govuk-heading-l">Data analysis (reporting period)</h2>
-{{ donutChart("Object Types", viewModel.objectTypeDonut) }}
+{{ donutChart("Object Types", viewModel.objectTypeDonut, viewModel.status) }}
 
 <h2 class="govuk-heading-l">Tracked objects</h2>
 <p class="govuk-body">Select an object name to see its full Tracking and Impact Prediction (TIP) detail, including re-entry history. Or see all tracked objects plotted on a <a class="govuk-link" href="/re-entry/map">live interactive map</a>.</p>

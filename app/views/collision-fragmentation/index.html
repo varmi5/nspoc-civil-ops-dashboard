@@ -12,26 +12,30 @@
 {% from "macros/trend-view.njk" import trendView %}
 {% from "macros/period-selector.njk" import periodSelector %}
 {% from "macros/explainer.njk" import explainer %}
+{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
 
 {% block content %}
 
-{{ mshBadge(viewModel.isLive) }}
+{{ mshBadge(viewModel.status) }}
 <h1 class="govuk-heading-xl">Collision &amp; Fragmentation</h1>
 
 <div class="msh-kpi-grid">
-  {{ kpiTile({ label: "Conjunction Events Tracked (current snapshot)", value: viewModel.collisionCount, isLive: viewModel.collisionCountIsLive }) }}
-  {{ kpiTile({ label: "Requires Analysis (probability > " + viewModel.analysisThreshold + ")", value: viewModel.requiresAnalysisCount, isLive: viewModel.requiresAnalysisIsLive }) }}
-  {{ kpiTile({ label: "Reported to UK Government", value: viewModel.reportedCount, isLive: viewModel.collisionCountIsLive }) }}
-  {{ kpiTile({ label: "Fragmentation Incidents Tracked", value: viewModel.fragmentationCount, isLive: viewModel.fragmentationCountIsLive }) }}
+  {{ kpiTile({ label: "Conjunction Events Tracked (current snapshot)", value: viewModel.collisionCount, status: viewModel.collisionStatus }) }}
+  {{ kpiTile({ label: "Requires Analysis (probability > " + viewModel.analysisThreshold + ")", value: viewModel.requiresAnalysisCount, status: viewModel.requiresAnalysisStatus }) }}
+  {{ kpiTile({ label: "Reported to UK Government", value: viewModel.reportedCount, status: viewModel.collisionStatus }) }}
+  {{ kpiTile({ label: "Fragmentation Incidents Tracked", value: viewModel.fragmentationCount, status: viewModel.fragmentationStatus }) }}
 </div>
 
 {{ explainer("What do \"conjunction\" and \"fragmentation\" mean?", "
   <p class='govuk-body'>A <strong>conjunction</strong> is the technical term for two tracked objects passing close together in orbit — this is what a collision risk is called before (hopefully) nothing happens. MSH tracks these as <code>conjunction-events</code>. A <strong>fragmentation</strong> is a breakup incident — an object splits into new trackable debris — tracked as <code>fragmentation-events</code>.</p>
   <p class='govuk-body'>Most conjunctions are routine wide misses with no computed probability at all — the general list below is bucketed by NSpOC's own \"interest\" rating (Low/Medium/High) rather than a number. The \"Requires Analysis\" table further down uses a dedicated MSH endpoint that only surfaces events past a probability threshold, with a real computed collision probability for each.</p>
+  <p class='govuk-body'><a class='govuk-link' href='/data-sources'>See the exact endpoint behind every figure on this page</a>.</p>
 ") }}
 
 <h2 class="govuk-heading-l">Conjunction events tracked</h2>
-<p class="govuk-body">Almost all of these are routine, low-probability screenings — see “Events requiring analysis” further down for the small subset that's actually significant. These monthly totals also run higher than NSpOC's own reported monthly figures — confirmed not caused by duplicate CDM revisions or a missing UK filter, but not yet matched to NSpOC's own methodology either (monthly volume is itself highly volatile, so a fair comparison depends on which month is being checked against). Treat this trend as real but unverified until that's confirmed.</p>
+{{ govukInsetText({
+  html: "Almost all of these are routine, low-probability screenings — see \"Events requiring analysis\" further down for the small subset that's actually significant. These monthly totals also run higher than NSpOC's own reported monthly figures. Confirmed directly against MSH's full API specification: no endpoint or filter currently produces the narrower, analyst-reviewed figure NSpOC actually reports — this is a genuine gap in what MSH exposes today, not something a different query can fix. Raised with the MSH/NSpOC team; see <a class='govuk-link' href='/data-sources'>Data sources</a> for the full investigation."
+}) }}
 {{ periodSelector("/collision-fragmentation", viewModel.trendMonths, viewModel.trendPeriods, "months", "month") }}
 <p class="govuk-body-s msh-month-strip__scroll-hint">Latest month first — scroll right for earlier months →</p>
 {{ trendView("conjunction-trend", "Conjunction events tracked", viewModel.trend, viewModel.trendChart) }}
@@ -42,10 +46,10 @@
 <h2 class="govuk-heading-l">Data analysis</h2>
 <div class="msh-donut-grid">
   <div class="msh-donut-chart-card">
-    {{ donutChart("Source of Risk (by interest rating)", viewModel.riskDonut) }}
+    {{ donutChart("Source of Risk (by interest rating)", viewModel.riskDonut, viewModel.riskDonutStatus) }}
   </div>
   <div class="msh-donut-chart-card">
-    {{ donutChart("Fragmentation Cause", viewModel.fragTypeDonut) }}
+    {{ donutChart("Fragmentation Cause", viewModel.fragTypeDonut, viewModel.fragTypeDonutStatus) }}
   </div>
 </div>
 

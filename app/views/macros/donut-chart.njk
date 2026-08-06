@@ -2,8 +2,12 @@
 Renders the object returned by app/lib/charts/donut.js as an accessible SVG donut plus a
 legend list. The legend is the real text alternative (screen readers and print both rely
 on it) — colour is decoration, never the only way to read a value.
+
+`status` ("live"|"unavailable"|"not-connected", optional) — when the chart has no
+segments, picks the right empty-state message instead of one generic line, so a
+permanently-unconnected figure isn't worded the same as a temporary live failure.
 #}
-{% macro donutChart(title, chart) %}
+{% macro donutChart(title, chart, status) %}
   <div class="msh-donut-chart">
     <figure class="msh-donut-chart__figure">
       {% if chart.total > 0 %}
@@ -19,6 +23,10 @@ on it) — colour is decoration, never the only way to read a value.
             ></circle>
           {% endfor %}
         </svg>
+      {% elif status == "not-connected" %}
+        <p class="msh-donut-chart__empty">No live data source connected</p>
+      {% elif status == "unavailable" %}
+        <p class="msh-donut-chart__empty">No data available</p>
       {% else %}
         <p class="msh-donut-chart__empty">No data available this reporting period</p>
       {% endif %}

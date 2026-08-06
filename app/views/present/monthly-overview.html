@@ -5,6 +5,7 @@
 {% from "macros/present-controls.njk" import presentControls %}
 {% from "macros/kpi-tile.njk" import kpiTile %}
 {% from "macros/donut-chart.njk" import donutChart %}
+{% from "macros/badge.njk" import mshBadge %}
 
 {% block content %}
   {{ presentControls(nav) }}
@@ -21,7 +22,8 @@
     <div class="govuk-grid-row">
       {% for donutItem in viewModel.donuts %}
         <div class="govuk-grid-column-one-third">
-          {{ donutChart(donutItem.title, donutItem.chart) }}
+          <span class="msh-donut-chart-card__badge">{{ mshBadge(donutItem.status) }}</span>
+          {{ donutChart(donutItem.title, donutItem.chart, donutItem.status) }}
         </div>
       {% endfor %}
     </div>

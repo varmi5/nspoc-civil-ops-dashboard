@@ -5,10 +5,12 @@
 {% from "macros/present-controls.njk" import presentControls %}
 {% from "macros/kpi-tile.njk" import kpiTile %}
 {% from "macros/donut-chart.njk" import donutChart %}
+{% from "macros/badge.njk" import mshBadge %}
 
 {% block content %}
   {{ presentControls(nav) }}
   <div class="msh-present-slide">
+    {{ mshBadge(viewModel.status) }}
     <h1 class="msh-present-slide__title">Re-Entry</h1>
     <p class="msh-present-slide__subtitle">Last {{ viewModel.trendMonths }} month{{ "s" if viewModel.trendMonths != 1 }}</p>
 
@@ -18,6 +20,6 @@
       {{ kpiTile({ label: "Objects Analysed for Risk", value: viewModel.analysedCount, unit: "of " + viewModel.totalCount }) }}
     </div>
 
-    {{ donutChart("Object Types", viewModel.objectTypeDonut) }}
+    {{ donutChart("Object Types", viewModel.objectTypeDonut, viewModel.status) }}
   </div>
 {% endblock %}

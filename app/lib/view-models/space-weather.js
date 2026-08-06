@@ -3,12 +3,12 @@ const { parseAlert } = require('../space-weather/parse-alert')
 const { sectorStatusesForDay, SECTORS, SECTOR_LABELS } = require('../space-weather/sector-rules')
 const spaceWeatherConfig = require('../space-weather/config')
 const { isSectionLiveCapable } = require('../msh/data-source')
-const { loadFixture } = require('../fixtures')
+const { STATUS } = require('../msh/status')
 const { currentMonth, parseMonthParam, monthKey, monthLabel, listRecentMonths } = require('../date-range')
 
 const MONTH_OPTIONS_COUNT = 24
 
-// Mirrors getSectionData's live/fixture contract (app/lib/msh/get-section-data.js) but
+// Mirrors getSectionData's live/status contract (app/lib/msh/get-section-data.js) but
 // isn't MSH — NOAA needs no credentials and isn't gated by USE_LIVE_MSH, so it gets its own
 // small equivalent rather than being forced through the MSH-specific one.
 function isConfiguredForLive () {
@@ -16,15 +16,16 @@ function isConfiguredForLive () {
 }
 
 async function getAlerts () {
-  if (isConfiguredForLive()) {
-    try {
-      const data = await fetchAlerts()
-      return { data, isLive: true }
-    } catch (err) {
-      console.error(`Space weather live fetch failed (falling back to fixture data): ${err.message}`)
-    }
+  if (!isConfiguredForLive()) {
+    return { data: null, status: STATUS.NOT_CONNECTED }
   }
-  return { data: loadFixture('space-weather/alerts.json'), isLive: false }
+  try {
+    const data = await fetchAlerts()
+    return { data, status: STATUS.LIVE }
+  } catch (err) {
+    console.error(`Space weather live fetch failed: ${err.message}`)
+    return { data: null, status: STATUS.UNAVAILABLE }
+  }
 }
 
 // NOAA's issue_datetime is UTC (confirmed live — no timezone marker, but SWPC's own docs
@@ -60,9 +61,9 @@ function formatUtcDate (date) {
 
 async function buildSpaceWeatherViewModel (monthParam) {
   const month = parseMonthParam(monthParam) || currentMonth()
-  const { data: rawAlerts, isLive } = await getAlerts()
+  const { data: rawAlerts, status } = await getAlerts()
 
-  const parsedAlerts = rawAlerts.map(parseAlert).filter(Boolean)
+  const parsedAlerts = status === STATUS.LIVE ? rawAlerts.map(parseAlert).filter(Boolean) : []
   const alertsByDay = parsedAlerts.reduce((acc, alert) => {
     (acc[alert.issueDate] = acc[alert.issueDate] || []).push(alert)
     return acc
@@ -91,7 +92,7 @@ async function buildSpaceWeatherViewModel (monthParam) {
   }))
 
   return {
-    isLive,
+    status,
     monthKeyValue: monthKey(month),
     monthLabel: monthLabel(month),
     monthOptions,

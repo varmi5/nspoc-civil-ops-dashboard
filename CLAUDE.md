@@ -25,6 +25,10 @@ app/
     sections.js                Per-section nav config + liveCapable flag (gates whether
                                 MSH is even attempted for that section — see data-source.js)
     present-slides.js          Ordered slide registry for Presentation Mode
+    data-sources.js            Single source of truth mapping every figure to the exact
+                                endpoint(s) it comes from — read by the /data-sources page.
+                                Keep this in sync with the endpoint table below by hand;
+                                nothing enforces the two automatically.
   lib/
     msh/
       client.js                mshRequest() — the only way to call MSH. 4s timeout,
@@ -37,10 +41,14 @@ app/
       cache-warmer.js           warmCache() — fires each section's default view once at
                                 server boot so the cache above is warm before any real
                                 request arrives
-      get-section-data.js      getSectionData(sectionKey, {liveFetcher, fixturePath}) —
-                                THE pattern every view-model uses. Tries live if the
-                                section is liveCapable AND USE_LIVE_MSH=true, catches any
-                                error, falls back to the fixture. Returns {data, isLive}.
+      status.js                 STATUS enum ('live'|'unavailable'|'not-connected') +
+                                worstStatus() to combine several sub-fetch statuses into
+                                one page-level status — see get-section-data.js below.
+      get-section-data.js      getSectionData(sectionKey, {liveFetcher}) — THE pattern
+                                every view-model uses. Tries live only if the section is
+                                liveCapable AND USE_LIVE_MSH=true. Returns
+                                {data, status}, never a fixture stand-in — see "Live data
+                                model" under Core patterns below.
       data-source.js            isConfiguredForLive(sectionKey) — liveCapable && useLiveMsh
       conjunction-analysis.js  Shared /for-analysis fetch + CDM-revision dedup logic
                                 (used by both Monthly Overview and Collision & Fragmentation)
@@ -59,6 +67,9 @@ app/
       collision-fragmentation.js  buildCollisionFragmentationViewModel(months)
       space-weather.js          buildSpaceWeatherViewModel(month) — one row per calendar
                                 day, GREEN/YELLOW/RED per sector
+      data-sources.js           buildDataSourcesViewModel() — reads config/data-sources.js,
+                                computes each row's connected/not-connected state the same
+                                way get-section-data.js does, for the /data-sources page
     charts/
       donut.js                 Pure maths -> SVG donut segments (no rendering)
       bar-chart.js              Pure maths -> SVG bar geometry (no rendering)
@@ -101,17 +112,35 @@ templates never call JS chart-building functions directly (`buildDonut`/`buildBa
 run in the view-model; the macro just receives the already-built `chart` object) —
 mirrors how `donutChart(title, chart)` and `barChart(title, chart)` are used everywhere.
 
-**Live/fallback via `getSectionData`.** Every live-capable figure goes through
-`getSectionData(sectionKey, {liveFetcher, fixturePath})`, which returns `{data, isLive}`.
-The `mshBadge` macro renders `isLive` as a real "Live from MSH API" / "Sample data" tag —
-this reflects what actually happened on THIS request, not a static config flag. A section
-only ever attempts live if `sections.js` marks it `liveCapable: true` AND
-`USE_LIVE_MSH=true` in `.env`.
+**Live data model via `getSectionData` — no fixture fallback in production paths.** Every
+live-capable figure goes through `getSectionData(sectionKey, {liveFetcher})`, which returns
+`{data, status}` where `status` is one of `'live'` / `'unavailable'` / `'not-connected'`
+(`app/lib/msh/status.js`). `data` is `null` unless `status === 'live'` — **there is no
+fixture stand-in for a failed or not-yet-connected figure**, on purpose: an orbital analyst
+seeing a number must be able to trust it's real. `mshBadge(status)` renders the matching
+tag ("Live from MSH API" / "No data available" / "No live data source connected"), and
+`kpiTile`/`donutChart` show that same explanatory text in place of a value rather than any
+number. A section only ever attempts live if `sections.js` marks it `liveCapable: true` AND
+`USE_LIVE_MSH=true` in `.env` — otherwise it's `not-connected` immediately, no fetch
+attempted. `worstStatus(...)` combines several sub-fetch statuses into one page-level
+status (not-connected beats unavailable beats live). This replaced an earlier pattern where
+every section fell back to a JSON fixture under `data-fixtures/` on failure — removed
+because that fallback was themselves indistinguishable enough from real data that orbital
+analysts raised it as a genuine risk; `app/lib/fixtures.js` and the fixture JSON files still
+exist on disk but are no longer referenced by any production render path (kept only as a
+schema reference, not wired back in without a new decision to do so).
+
+**Data-source transparency (`/data-sources`).** `app/config/data-sources.js` is the single
+list of every figure on the dashboard and the exact endpoint(s) behind it, read by
+`buildDataSourcesViewModel()` to render a live "connected / not connected" table per page.
+Every explainer disclosure links to it. Keep this file in sync with the "Endpoints
+currently called in production code" table further down by hand — nothing enforces the two
+staying identical.
 
 **Response caching (`response-cache.js`).** Stale-while-revalidate: once a key succeeds,
 stale data is served instantly on expiry (5 min) while a background refresh runs; a key
-that has never succeeded is retried at most every 30s. This is why "Sample data" flickers
-in only ever happen on a truly cold key, not on every page load. **Concurrent cold-miss
+that has never succeeded is retried at most every 30s. This is why a "No data available"
+badge only ever appears on a truly cold key, not on every page load. **Concurrent cold-miss
 requests for the same key are coalesced** into one shared in-flight promise — confirmed
 this mattered live: `buildReEntryViewModel()` and `buildReEntryMapViewModel()` both need
 the same `/v1/satellites/with-metadata` and reentry-list keys, and without coalescing each
@@ -185,6 +214,14 @@ and occasionally silent on exactly this kind of behavioural gotcha.
   were empty in every fast-path sample tested — likely because they only get filled in as
   an event's closest-approach date nears, and the only fast query path (default sort,
   descending) returns the far-future tail where that hasn't happened yet.
+- **No endpoint or filter anywhere in the spec narrows conjunction events down to an
+  analyst-reviewed/reported subset** — confirmed by enumerating every conjunction-related
+  path in `/openapi.json` and regex-searching every parameter name for anything resembling
+  "search"/"risk_assessed"/"reported"/"requires_analysis"/"analyst"/"review". The only hit
+  is a `report` enum (`present`/`not_present`/`all`) on `/v1/conjunction-events/list` and
+  `/v1/reentry-events/` only — not on any stats/monthly/aggregated endpoint — and tested
+  live it returns ~1 row/month, nowhere near a real monthly figure. This is the confirmed
+  root cause behind the "Known open issue" below, not a hypothesis.
 - **Risk is a 6-value enum**: None, Very low, Low, Medium, High, Pending — not a
   3-value-plus-null scheme. Confirmed via the reentry/conjunction/fragmentation report
   `/schema` endpoints.
@@ -235,9 +272,11 @@ and occasionally silent on exactly this kind of behavioural gotcha.
 ## What's been built
 
 - **Monthly Overview** (`/`) — KPI tiles (re-entry, collision catalogue + this-month +
-  requires-analyst-review, asteroids/space-weather/launches/UK-objects — several still
-  fixture-only, see `sections.js`), two donuts, month selector, auto-generated 2-sentence
-  summary panel.
+  requires-analyst-review, asteroids/space-weather/launches/UK-objects — several
+  (asteroids, the space-weather tile+donut, UK-objects, other-alerts, service-status
+  donut) have no live source wired in at all and show "No live data source connected"
+  rather than a number, see `sections.js` and `/data-sources`), two donuts, month
+  selector, auto-generated 2-sentence summary panel.
 - **Re-Entry** (`/re-entry`) — KPI tiles, latest-first month-strip trend (toggleable
   card/graph view), object-type donut, **tabbed** tracked-objects table (Upcoming /
   Pending Analysis / Analysed), each tab in a scrollable fixed-height panel, tied to the
@@ -265,6 +304,10 @@ and occasionally silent on exactly this kind of behavioural gotcha.
   historical archive, so the per-day table has to come from parsing `alerts.json`.
 - **Executive Summary** (`/summary` + condensed panel on Monthly Overview) — fully
   deterministic sentence templates (`narrative.js`), explicitly not an LLM.
+- **Data sources** (`/data-sources`) — one table per page listing every figure, its exact
+  MSH/NOAA endpoint(s), and a live connected/not-connected status computed the same way
+  `getSectionData` does. Linked from the footer and every explainer disclosure. Exists so
+  an orbital analyst never has to guess where a number came from or whether it's real.
 - **Progressive enhancement throughout**: print links, month-selector auto-submit,
   fast-nav (swaps `#main-content` via fetch on period/month changes without a full
   reload), trend-view card/graph toggle, map pan/zoom — all degrade to a working
@@ -285,19 +328,35 @@ like a regression, check the label/explainer are still present before assuming t
 is stuck — it's expected to be identical across every month and every one of `/`,
 `/summary`, `/present/summary`, `/present/monthly-overview` (same shared cache key).
 
-## Known open issue — NOT resolved
+## Known open issue — CONFIRMED, not fixable from this side
 
 **NSpOC's own real monthly report shows a conjunction-events figure that's often far
 smaller than what MSH's aggregated endpoint returns** for the same kind of month (monthly
 totals here range roughly 2,000-78,000 depending on the month — hugely volatile — while
 NSpOC's real figure has been reported around 1,300). Ruled out directly: CDM-revision
-duplication and a missing UK filter (see above — neither explains the gap). Leading
-hypothesis, unconfirmed: NSpOC's figure counts only risk-assessed/reported events, not
-every routine screening — but the fields that would prove this
-(`report_number`/`risk`/`collision_probability_uksa`) are empty in every fast-path sample
-available. This needs an answer from the MSH/NSpOC team directly, not more guessing from
-this side. Flagged in both the Monthly Overview and Collision & Fragmentation explainer
-text — don't remove that caveat without resolving the underlying question first.
+duplication and a missing UK filter (see above — neither explains the gap).
+
+**Confirmed live against MSH's full `/openapi.json` (2026-08-04), prompted by an orbital
+analyst's suspicion that no such endpoint exists: it doesn't.** Every conjunction-related
+path was enumerated and every parameter dumped — the only filter resembling a
+"reported/analyst-reviewed" flag anywhere in the spec is `report`
+(`ReportFlagSettings`: `present`/`not_present`/`all`), and it exists on just two endpoints,
+`/v1/conjunction-events/list` and `/v1/reentry-events/` — **not** on
+`/v1/conjunction-events/stats`, `/v1/stats/count/conjunction-events`, or any
+`/v1/stats/monthly/conjunction-events*` variant, so there's no monthly-aggregated version
+of it even if it were the answer. Tested live anyway:
+`GET /v1/conjunction-events/list?report=present&epoch=all&limit=500&sort_by=tca_time&sort_order=desc`
+returned only ~1 row per month across the sample — three orders of magnitude too sparse to
+be NSpOC's ~1,300/month figure either. No endpoint named anything like "search",
+"risk_assessed", "analyst_reviewed", or "requires_analysis" exists in the spec at all.
+
+**Conclusion: this is a genuine, permanent gap in what MSH currently exposes, not a query
+this dashboard can work around.** Raised as a real product gap for the MSH/NSpOC team to
+resolve — don't spend further engineering time hunting for a better endpoint on this side
+without new information from them. Surfaced directly in the UI: an inline caveat on the
+"Collision Risks (This Month)" tile and the Collision & Fragmentation trend (not buried in
+a collapsed explainer, since that's how this went unnoticed before), plus a full writeup on
+the `/data-sources` page and in both pages' explainer text.
 
 ## Working conventions for this repo
 
@@ -309,6 +368,10 @@ text — don't remove that caveat without resolving the underlying question firs
 - **No secrets in committed files.** `.env` holds `MSH_CLIENT_ID`/`MSH_CLIENT_SECRET`/etc
   and is gitignored. When testing with a credential pasted into a chat, treat it as
   compromised and rotate it — don't reuse it beyond that session.
-- **Fixture files are real placeholders, not filler.** Every fixture in
-  `data-fixtures/` mirrors the real shape a live fetch would return, so the Sample-data
-  fallback view stays visually consistent with the live one.
+- **Fixture files are kept as a schema reference, not wired into any render path.** Every
+  file in `data-fixtures/` mirrors the real shape a live fetch would return, which is
+  still useful as documentation — but neither `app/lib/fixtures.js` nor any fixture JSON
+  is referenced by production code any more (removed alongside the fixture-fallback
+  pattern; see "Live data model" above). Don't reintroduce a `loadFixture()` call in a
+  view-model without a new product decision to do so — showing a real user a number with
+  no live source behind it is exactly what that removal was for.

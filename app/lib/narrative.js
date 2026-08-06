@@ -10,7 +10,7 @@ function findTile (tiles, key) {
 
 function reentryHeadlineSentence (viewModel) {
   const tile = findTile(viewModel.tiles, 'reentry-count')
-  if (!tile) return null
+  if (!tile || tile.status !== 'live') return null
 
   const lead = `${viewModel.selectedMonthLabel} saw ${tile.value} uncontrolled re-entries tracked by NSpOC`
 
@@ -31,7 +31,7 @@ function reentryHeadlineSentence (viewModel) {
 
 function reentryAlertSentence (viewModel) {
   const tile = findTile(viewModel.tiles, 'reentry-alerts')
-  if (!tile) return null
+  if (!tile || tile.status !== 'live') return null
 
   if (tile.value === 0) {
     return 'No re-entry alerts were issued this period.'
@@ -53,9 +53,9 @@ function reentryAlertSentence (viewModel) {
 
 function collisionSentence (viewModel) {
   const riskTile = findTile(viewModel.tiles, 'collision-risk')
-  if (!riskTile) return null
+  if (!riskTile || riskTile.status !== 'live') return null
   const alertTile = findTile(viewModel.tiles, 'collision-alerts')
-  const alertCount = alertTile ? alertTile.value : 0
+  const alertCount = alertTile && alertTile.status === 'live' ? alertTile.value : 0
 
   // Not UK-scoped — no such filter is confirmed to exist on this endpoint (checked
   // directly against the full parameter list), so this is worded as the tracked-catalogue
@@ -92,19 +92,28 @@ function fragmentationLaunchesSentence (viewModel) {
   return `Elsewhere, ${parts.join(', and ')} compared with ${viewModel.previousMonthLabel}.`
 }
 
-// Keeps the auto-generated prose honest about the same live/sample distinction the
-// mshBadge already shows on every card — this isn't hidden in the narrative.
+// Keeps the auto-generated prose honest about the same live/unavailable/not-connected
+// distinction the mshBadge already shows on every card — this isn't hidden in the
+// narrative. No figure is ever substituted for a missing one, so this only ever says
+// what's absent, never a stand-in number.
 function dataQualitySentence (viewModel) {
-  const hasSampleTile = viewModel.tiles.some((tile) => tile.isLive === false)
-  if (!hasSampleTile) return null
-  return 'Figures marked "Sample data" are illustrative placeholders and have not yet been confirmed against a live MSH source.'
+  const unavailable = viewModel.tiles.filter((tile) => tile.status === 'unavailable').length
+  const notConnected = viewModel.tiles.filter((tile) => tile.status === 'not-connected').length
+
+  if (unavailable) {
+    return 'Some figures could not be shown because the live MSH service did not respond to this request — see Data sources.'
+  }
+  if (notConnected) {
+    return 'Some figures on this page are not yet connected to a live data source and are not shown — see Data sources.'
+  }
+  return null
 }
 
 // Unconditional filler — only used if fewer than 3 sentences fired above, so the summary
 // never reads as suspiciously thin.
 function closingSentence (viewModel) {
   const ukTile = findTile(viewModel.tiles, 'uk-objects')
-  if (ukTile) {
+  if (ukTile && ukTile.status === 'live') {
     return `The UK-licensed population in orbit currently stands at ${ukTile.value} objects.`
   }
   return 'No further significant changes were recorded this period.'

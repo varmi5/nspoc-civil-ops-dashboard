@@ -36,7 +36,9 @@ async function requestAndParse (path, options) {
   }
 
   if (!response.ok) {
-    throw new Error(`MSH API request to ${path} failed with status ${response.status}`)
+    const err = new Error(`MSH API request to ${path} failed with status ${response.status}`)
+    err.httpStatus = response.status
+    throw err
   }
 
   return response.json()

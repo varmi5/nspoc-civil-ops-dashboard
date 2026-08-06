@@ -9,7 +9,16 @@
 
 {% block content %}
 
-{{ mshBadge(viewModel.isLive) }}
+{{ mshBadge(viewModel.status) }}
+
+{% if viewModel.status != "live" %}
+
+<h1 class="govuk-heading-xl">Object {{ viewModel.noradId }}</h1>
+<p class="govuk-body">MSH is not returning data for this object right now. Try again shortly.</p>
+<a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/re-entry">Return to Re-Entry</a>
+
+{% else %}
+
 <h1 class="govuk-heading-xl">{{ viewModel.objectName }}</h1>
 
 <h2 class="govuk-heading-l">Licence and object information</h2>
@@ -91,5 +100,7 @@
   {{ printLink() }}
   <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/re-entry">Return to Re-Entry</a>
 </div>
+
+{% endif %}
 
 {% endblock %}

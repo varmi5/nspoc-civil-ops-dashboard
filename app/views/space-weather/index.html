@@ -12,18 +12,21 @@
 
 {% block content %}
 
-{{ mshBadge(viewModel.isLive) }}
+{{ mshBadge(viewModel.status) }}
 <h1 class="govuk-heading-xl">Space Weather</h1>
 
 {{ explainer("Where does this come from, and how are the sector ratings decided?", "
   <p class='govuk-body'>Alerts are sourced live from NOAA's Space Weather Prediction Center — radio blackout, geomagnetic, electron flux, proton flux and geomagnetic sudden impulse alerts, the same alert families as NSpOC's existing MOSWOC-sourced log.</p>
   <p class='govuk-body'><strong>The colour shown per sector is a first-draft mapping, not yet signed off by NSpOC.</strong> It's derived from NOAA's own published potential-impact descriptions per scale level, not NSpOC's real methodology — treat every rating on this page as provisional until it's validated against real historical reports.</p>
+  <p class='govuk-body'><a class='govuk-link' href='/data-sources'>See the exact endpoint behind this page</a>.</p>
 ") }}
 
 {{ monthSelector("/space-weather", viewModel.monthKeyValue, viewModel.monthOptions) }}
 
+{% if viewModel.status == "live" %}
+
 <div class="msh-kpi-grid">
-  {{ kpiTile({ label: "Total Alerts (" + viewModel.monthLabel + ")", value: viewModel.totalAlerts, isLive: viewModel.isLive }) }}
+  {{ kpiTile({ label: "Total Alerts (" + viewModel.monthLabel + ")", value: viewModel.totalAlerts, status: viewModel.status }) }}
   {{ kpiTile({ label: "Days with at least one alert", value: viewModel.daysWithAlerts }) }}
   {{ kpiTile({ label: "Sector Ratings at Yellow", value: viewModel.yellowRatingCount }) }}
   {{ kpiTile({ label: "Sector Ratings at Red", value: viewModel.redRatingCount }) }}
@@ -53,6 +56,15 @@
   </tbody>
 </table>
 </div>
+
+{% else %}
+
+<div class="msh-kpi-grid">
+  {{ kpiTile({ label: "Total Alerts (" + viewModel.monthLabel + ")", status: viewModel.status }) }}
+</div>
+<p class="govuk-body">Sector conditions cannot be shown without a live NOAA feed — no data is substituted in its place.</p>
+
+{% endif %}
 
 <div class="govuk-button-group">
   {{ printLink() }}

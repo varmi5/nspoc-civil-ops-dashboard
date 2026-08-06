@@ -3,7 +3,7 @@
 {#
 Renders one KPI tile. `params`:
   label       (string, required)
-  value       (string|number, required)
+  value       (string|number, required unless status is not "live")
   unit        (string, optional)
   delta       (string, optional) — e.g. "- 20 (29%)"
   deltaGood   (boolean, optional) — true renders green/up, false renders red/down,
@@ -11,9 +11,15 @@ Renders one KPI tile. `params`:
               always good (e.g. more high-risk collision alerts is bad; more UK objects
               in orbit is neutral/expected growth).
   href        (string, optional) — wraps the tile in a link when present
-  isLive      (boolean, optional) — when passed (not undefined), renders the
-              Live/Sample badge inside the tile so it stays visually attached to it in
-              the wrapping grid, rather than floating as a separate grid item.
+  status      ("live"|"unavailable"|"not-connected", optional) — when passed, renders
+              the badge inside the tile, and when not "live", shows an explanatory
+              message in place of `value`/`delta` rather than a number that could be
+              mistaken for real data.
+  caveat      (string, optional) — a short, always-visible warning shown under the
+              value even when status is "live", for a figure that's real but knowingly
+              a different metric to what it might be compared against (e.g. the
+              conjunction-events count vs NSpOC's own reported figure). Plain text only
+              — the tile itself may already be a link, so this must never contain one.
 #}
 {% macro kpiTile(params) %}
   {% set deltaClass = "msh-kpi-tile__delta--neutral" %}
@@ -25,13 +31,22 @@ Renders one KPI tile. `params`:
   {% else %}
     <div class="msh-kpi-tile">
   {% endif %}
-      <span class="msh-kpi-tile__value">{{ params.value }}{% if params.unit %} {{ params.unit }}{% endif %}</span>
+      {% if params.status == "unavailable" %}
+        <span class="msh-kpi-tile__value msh-kpi-tile__value--empty">No data available</span>
+      {% elif params.status == "not-connected" %}
+        <span class="msh-kpi-tile__value msh-kpi-tile__value--empty">No live data source connected</span>
+      {% else %}
+        <span class="msh-kpi-tile__value">{{ params.value }}{% if params.unit %} {{ params.unit }}{% endif %}</span>
+      {% endif %}
       <span class="msh-kpi-tile__label">{{ params.label }}</span>
-      {% if params.delta %}
+      {% if params.delta and params.status == "live" %}
         <span class="msh-kpi-tile__delta {{ deltaClass }}">{{ params.delta }}</span>
       {% endif %}
-      {% if params.isLive != undefined %}
-        <span class="msh-kpi-tile__badge">{{ mshBadge(params.isLive) }}</span>
+      {% if params.caveat and params.status == "live" %}
+        <span class="msh-kpi-tile__caveat">{{ params.caveat }}</span>
+      {% endif %}
+      {% if params.status != undefined %}
+        <span class="msh-kpi-tile__badge">{{ mshBadge(params.status) }}</span>
       {% endif %}
   {% if params.href %}
     </a>

@@ -12,6 +12,7 @@ const { buildReEntryViewModel, buildReEntryObjectViewModel, buildReEntryMapViewM
 const { buildMonthlyOverviewViewModel } = require('./lib/view-models/monthly-overview')
 const { buildCollisionFragmentationViewModel } = require('./lib/view-models/collision-fragmentation')
 const { buildSpaceWeatherViewModel } = require('./lib/view-models/space-weather')
+const { buildDataSourcesViewModel } = require('./lib/view-models/data-sources')
 const { buildExecutiveSummary } = require('./lib/narrative')
 const { presentNav } = require('./lib/present-nav')
 const { warmCache } = require('./lib/msh/cache-warmer')
@@ -90,6 +91,15 @@ router.get('/space-weather', async (req, res, next) => {
   try {
     const viewModel = await buildSpaceWeatherViewModel(req.query.month)
     res.render('space-weather/index', { viewModel })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.get('/data-sources', (req, res, next) => {
+  try {
+    const viewModel = buildDataSourcesViewModel()
+    res.render('data-sources/index', { viewModel })
   } catch (err) {
     next(err)
   }

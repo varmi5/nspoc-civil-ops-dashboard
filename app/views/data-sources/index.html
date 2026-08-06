@@ -1,0 +1,60 @@
+{% extends "layouts/main.html" %}
+
+{% set pageName = "Data sources" %}
+
+{% from "govuk/components/tag/macro.njk" import govukTag %}
+{% from "macros/print-link.njk" import printLink %}
+
+{% block content %}
+
+<h1 class="govuk-heading-xl">Data sources</h1>
+<p class="govuk-body">Every figure on this dashboard, the exact MSH or NOAA endpoint it comes from, and whether it's currently connected to live data. Nothing shown here is ever a placeholder number — a figure with no live source shows no value at all on its page, only a status.</p>
+
+{% for page in viewModel.pages %}
+  <h2 class="govuk-heading-l">
+    {% if page.href %}<a class="govuk-link" href="{{ page.href }}">{{ page.title }}</a>{% else %}{{ page.title }}{% endif %}
+  </h2>
+  <div class="msh-scroll-panel">
+  <table class="govuk-table">
+    <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Data sources for {{ page.title }}</caption>
+    <thead class="govuk-table__head">
+      <tr class="govuk-table__row">
+        <th scope="col" class="govuk-table__header">Figure</th>
+        <th scope="col" class="govuk-table__header">Status</th>
+        <th scope="col" class="govuk-table__header">Endpoint(s)</th>
+        <th scope="col" class="govuk-table__header">Notes</th>
+      </tr>
+    </thead>
+    <tbody class="govuk-table__body">
+      {% for row in page.rows %}
+        <tr class="govuk-table__row">
+          <td class="govuk-table__cell">{{ row.figure }}</td>
+          <td class="govuk-table__cell">
+            {% if row.connected %}
+              {{ govukTag({ text: "Connected", classes: "govuk-tag--green" }) }}
+            {% else %}
+              {{ govukTag({ text: "Not connected", classes: "govuk-tag--grey" }) }}
+            {% endif %}
+          </td>
+          <td class="govuk-table__cell">
+            {% if row.endpoints.length == 0 %}
+              <span class="govuk-body-s">None</span>
+            {% else %}
+              {% for endpoint in row.endpoints %}
+                <code class="msh-data-sources__endpoint">{{ endpoint }}</code>{% if not loop.last %}<br>{% endif %}
+              {% endfor %}
+            {% endif %}
+          </td>
+          <td class="govuk-table__cell">{{ row.description }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% endfor %}
+
+<div class="govuk-button-group">
+  {{ printLink() }}
+</div>
+
+{% endblock %}

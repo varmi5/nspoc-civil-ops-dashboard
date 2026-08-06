@@ -1,9 +1,11 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 
-{% macro mshBadge(isLive) %}
-  {% if isLive %}
+{% macro mshBadge(status) %}
+  {% if status == "live" %}
     {{ govukTag({ text: "Live from MSH API", classes: "govuk-tag--green" }) }}
+  {% elif status == "unavailable" %}
+    {{ govukTag({ text: "No data available", classes: "govuk-tag--red" }) }}
   {% else %}
-    {{ govukTag({ text: "Sample data — no confirmed source", classes: "govuk-tag--grey" }) }}
+    {{ govukTag({ text: "No live data source connected", classes: "govuk-tag--grey" }) }}
   {% endif %}
 {% endmacro %}

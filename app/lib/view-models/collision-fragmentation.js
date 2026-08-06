@@ -2,6 +2,7 @@ const { getSectionData } = require('../msh/get-section-data')
 const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
 const { buildBarChart } = require('../charts/bar-chart')
+const { STATUS, worstStatus } = require('../msh/status')
 const { formatDateTime, formatMonth } = require('../format-date')
 const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths, monthKey, listRecentMonths } = require('../date-range')
 const { ANALYSIS_THRESHOLD, fetchEventsForAnalysis } = require('../msh/conjunction-analysis')
@@ -55,12 +56,11 @@ function fillMonthlySeries (rows, months) {
 // in a single call — no background-fetch workaround needed. Returns one row per month
 // with an explicit `total` (not one row per probability-range needing summation).
 //
-// CAVEAT, not resolved: totals here still run far higher than NSpOC's own reported
-// monthly figure — but monthly volume is itself highly volatile (June 2026 measured at
-// 2,357 vs 40,000-78,000 in every surrounding month), so which month NSpOC's reference
-// was for matters. Ruled out directly: CDM-revision duplication and a missing UK filter
-// (see monthly-overview.js's fetchConjunctionMonthlyTotal for the full investigation).
-// Treat as real but unverified against NSpOC's own methodology.
+// CONFIRMED (not just suspected): this total is a raw screening count, not the same
+// metric as NSpOC's own reported monthly figure — see monthly-overview.js's
+// fetchConjunctionMonthlyTotal for the full live investigation and CLAUDE.md's "Known
+// open issue" section. This is a permanent MSH data-model gap, not fixable by choosing a
+// different endpoint.
 async function fetchConjunctionMonthlyTrend (months) {
   const end = currentMonth()
   const start = shiftMonths(end, -(months - 1))
@@ -119,30 +119,35 @@ async function buildCollisionFragmentationViewModel (requestedMonths) {
     fragmentationTrendResult,
     fragmentationByTypeResult
   ] = await Promise.all([
-    getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionList, fixturePath: 'collision-fragmentation/events.json' }),
-    getSectionData('collision-fragmentation', { liveFetcher: fetchEventsForAnalysis, fixturePath: 'collision-fragmentation/events-for-analysis.json' }),
-    getSectionData('collision-fragmentation', { liveFetcher: fetchFragmentationList, fixturePath: 'collision-fragmentation/fragmentation-events.json' }),
-    getSectionData('collision-fragmentation', { liveFetcher: () => fetchConjunctionMonthlyTrend(months), fixturePath: 'collision-fragmentation/trend.json' }),
-    getSectionData('collision-fragmentation', { liveFetcher: () => fetchFragmentationMonthlyTrend(months), fixturePath: 'collision-fragmentation/fragmentation-trend.json' }),
-    getSectionData('collision-fragmentation', { liveFetcher: fetchFragmentationByType, fixturePath: 'collision-fragmentation/by-fragmentation-type.json' })
+    getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionList }),
+    getSectionData('collision-fragmentation', { liveFetcher: fetchEventsForAnalysis }),
+    getSectionData('collision-fragmentation', { liveFetcher: fetchFragmentationList }),
+    getSectionData('collision-fragmentation', { liveFetcher: () => fetchConjunctionMonthlyTrend(months) }),
+    getSectionData('collision-fragmentation', { liveFetcher: () => fetchFragmentationMonthlyTrend(months) }),
+    getSectionData('collision-fragmentation', { liveFetcher: fetchFragmentationByType })
   ])
 
-  const trendRows = conjunctionTrendResult.isLive ? conjunctionTrendResult.data : conjunctionTrendResult.data.slice(-months)
-  const fragTrendRows = fragmentationTrendResult.isLive ? fragmentationTrendResult.data : fragmentationTrendResult.data.slice(-months)
+  const trendRows = conjunctionTrendResult.status === STATUS.LIVE ? conjunctionTrendResult.data : []
+  const fragTrendRows = fragmentationTrendResult.status === STATUS.LIVE ? fragmentationTrendResult.data : []
 
-  const analysisRows = eventsForAnalysisResult.data.map(buildAnalysisRow)
-  const fragmentationRows = fragmentationListResult.data.map(buildFragmentationRow)
+  const analysisRows = eventsForAnalysisResult.status === STATUS.LIVE ? eventsForAnalysisResult.data.map(buildAnalysisRow) : []
+  const fragmentationRows = fragmentationListResult.status === STATUS.LIVE ? fragmentationListResult.data.map(buildFragmentationRow) : []
 
-  const riskCounts = conjunctionListResult.data.reduce((acc, event) => {
-    const bucket = bucketByInterest(event)
-    acc[bucket] = (acc[bucket] || 0) + 1
-    return acc
-  }, {})
-  const riskDonut = buildDonut(Object.entries(riskCounts).map(([label, value]) => ({ label, value })))
+  const riskDonut = conjunctionListResult.status === STATUS.LIVE
+    ? buildDonut(
+        Object.entries(
+          conjunctionListResult.data.reduce((acc, event) => {
+            const bucket = bucketByInterest(event)
+            acc[bucket] = (acc[bucket] || 0) + 1
+            return acc
+          }, {})
+        ).map(([label, value]) => ({ label, value }))
+      )
+    : buildDonut([])
 
-  const fragTypeDonut = buildDonut(
-    fragmentationByTypeResult.data.map((row) => ({ label: row.fragmentation_type, value: row.count }))
-  )
+  const fragTypeDonut = fragmentationByTypeResult.status === STATUS.LIVE
+    ? buildDonut(fragmentationByTypeResult.data.map((row) => ({ label: row.fragmentation_type, value: row.count })))
+    : buildDonut([])
 
   // Latest month first — the current/most recent period is what you want to see
   // immediately, not after scrolling right past everything older. The bar chart uses the
@@ -152,25 +157,34 @@ async function buildCollisionFragmentationViewModel (requestedMonths) {
   const fragmentationTrend = fragTrendRows.slice().reverse().map((row) => ({ month: formatMonth(row.month), count: row.count }))
 
   return {
-    isLive: conjunctionListResult.isLive && fragmentationListResult.isLive && conjunctionTrendResult.isLive && fragmentationTrendResult.isLive,
+    status: worstStatus(
+      conjunctionListResult.status,
+      fragmentationListResult.status,
+      conjunctionTrendResult.status,
+      fragmentationTrendResult.status
+    ),
     trend,
     fragmentationTrend,
     trendChart: buildBarChart(trend),
     fragmentationTrendChart: buildBarChart(fragmentationTrend),
     trendMonths: months,
     trendPeriods: ALLOWED_TREND_PERIODS,
-    collisionCount: conjunctionListResult.data.length,
-    collisionCountIsLive: conjunctionListResult.isLive,
-    reportedCount: conjunctionListResult.data.filter((event) => event.report_number !== null && event.report_number !== undefined).length,
-    requiresAnalysisCount: eventsForAnalysisResult.data.length,
-    requiresAnalysisIsLive: eventsForAnalysisResult.isLive,
+    collisionCount: conjunctionListResult.status === STATUS.LIVE ? conjunctionListResult.data.length : null,
+    collisionStatus: conjunctionListResult.status,
+    reportedCount: conjunctionListResult.status === STATUS.LIVE
+      ? conjunctionListResult.data.filter((event) => event.report_number !== null && event.report_number !== undefined).length
+      : null,
+    requiresAnalysisCount: eventsForAnalysisResult.status === STATUS.LIVE ? eventsForAnalysisResult.data.length : null,
+    requiresAnalysisStatus: eventsForAnalysisResult.status,
     analysisThreshold: ANALYSIS_THRESHOLD.toExponential(0),
-    fragmentationCount: fragmentationListResult.data.length,
-    fragmentationCountIsLive: fragmentationListResult.isLive,
+    fragmentationCount: fragmentationListResult.status === STATUS.LIVE ? fragmentationListResult.data.length : null,
+    fragmentationStatus: fragmentationListResult.status,
     analysisRows,
     fragmentationRows,
     riskDonut,
-    fragTypeDonut
+    riskDonutStatus: conjunctionListResult.status,
+    fragTypeDonut,
+    fragTypeDonutStatus: fragmentationByTypeResult.status
   }
 }
 

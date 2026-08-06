@@ -5,25 +5,27 @@
 {% from "macros/present-controls.njk" import presentControls %}
 {% from "macros/kpi-tile.njk" import kpiTile %}
 {% from "macros/donut-chart.njk" import donutChart %}
+{% from "macros/badge.njk" import mshBadge %}
 
 {% block content %}
   {{ presentControls(nav) }}
   <div class="msh-present-slide">
+    {{ mshBadge(viewModel.status) }}
     <h1 class="msh-present-slide__title">Collision &amp; Fragmentation</h1>
 
     <div class="msh-kpi-grid msh-present-slide__kpi-grid">
-      {{ kpiTile({ label: "Conjunction Events Tracked", value: viewModel.collisionCount }) }}
-      {{ kpiTile({ label: "Requires Analysis", value: viewModel.requiresAnalysisCount }) }}
-      {{ kpiTile({ label: "Reported to UK Government", value: viewModel.reportedCount }) }}
-      {{ kpiTile({ label: "Fragmentation Incidents", value: viewModel.fragmentationCount }) }}
+      {{ kpiTile({ label: "Conjunction Events Tracked", value: viewModel.collisionCount, status: viewModel.collisionStatus }) }}
+      {{ kpiTile({ label: "Requires Analysis", value: viewModel.requiresAnalysisCount, status: viewModel.requiresAnalysisStatus }) }}
+      {{ kpiTile({ label: "Reported to UK Government", value: viewModel.reportedCount, status: viewModel.collisionStatus }) }}
+      {{ kpiTile({ label: "Fragmentation Incidents", value: viewModel.fragmentationCount, status: viewModel.fragmentationStatus }) }}
     </div>
 
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-one-half">
-        {{ donutChart("Source of Risk", viewModel.riskDonut) }}
+        {{ donutChart("Source of Risk", viewModel.riskDonut, viewModel.riskDonutStatus) }}
       </div>
       <div class="govuk-grid-column-one-half">
-        {{ donutChart("Fragmentation Cause", viewModel.fragTypeDonut) }}
+        {{ donutChart("Fragmentation Cause", viewModel.fragTypeDonut, viewModel.fragTypeDonutStatus) }}
       </div>
     </div>
   </div>

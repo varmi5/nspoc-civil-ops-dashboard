@@ -1,7 +1,7 @@
 const { getSectionData } = require('../msh/get-section-data')
 const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
-const { loadFixture } = require('../fixtures')
+const { STATUS } = require('../msh/status')
 const { fetchEventsForAnalysis } = require('../msh/conjunction-analysis')
 const {
   toDateString, startOfMonth, endOfMonth, currentMonth,
@@ -58,14 +58,13 @@ async function fetchConjunctionStats () {
 // range in one call, no background-fetch workaround needed at all. It returns one row per
 // month (not one row per probability-range per month) with an explicit `total` field.
 //
-// CAVEAT, still not resolved: this total remains far higher than the figure NSpOC's own
-// real monthly report shows — but monthly volume itself is highly volatile (confirmed
-// directly: June 2026 was 2,357 vs 40,000-78,000 in every surrounding month), so which
-// specific month NSpOC's reference figure was for matters a lot to any comparison. Ruled
-// out directly: CDM-revision duplication (zero duplicate short_ids in a 2,000-event
-// sample) and a missing UK filter (91.8% of events already involve a UK-licensed object).
-// Flagged honestly in the page's explainer text — treat this as real but unverified
-// against NSpOC's own methodology until confirmed with the MSH/NSpOC team.
+// CONFIRMED (not just suspected): this total is a raw screening count, not the same
+// metric as NSpOC's own reported figure. Live-tested against MSH's /openapi.json: no
+// endpoint or filter parameter (including the `report=present` flag on
+// /v1/conjunction-events/list, which returns ~1 row/month) narrows this down to an
+// analyst-reviewed/reported subset. This is a permanent MSH data-model gap, not something
+// a different endpoint choice can fix — see the caveat surfaced directly on the tile and
+// CLAUDE.md's "Known open issue" section.
 async function fetchConjunctionMonthlyTotal (month) {
   const { start, end } = dateRangeFor(month)
   const rows = await mshRequest(`/v1/stats/monthly/conjunction-events-aggregated?start_date=${start}&end_date=${end}`)
@@ -103,8 +102,10 @@ function bucketObjectType (objectType) {
 
 // A single month's total pulled from a {month, count} (or {month, alert_count}) style
 // monthly-breakdown endpoint, with a real month-over-month delta computed from the same
-// endpoint — not a separate, differently-scoped "lifetime" stats call.
-async function buildMonthTile ({ key, sectionKey, label, href, fixturePath, fetchRows, valueField, goodWhenDown, selectedMonth }) {
+// endpoint — not a separate, differently-scoped "lifetime" stats call. When the section
+// isn't live-configured or the fetch fails, there is no fallback number — the tile shows
+// its status instead, never a value that could be mistaken for a real one.
+async function buildMonthTile ({ key, sectionKey, label, href, fetchRows, valueField, goodWhenDown, selectedMonth }) {
   const previous = shiftMonths(selectedMonth, -1)
 
   const result = await getSectionData(sectionKey, {
@@ -116,30 +117,26 @@ async function buildMonthTile ({ key, sectionKey, label, href, fixturePath, fetc
         value: selectedRow ? selectedRow[valueField] : 0,
         previousValue: previousRow ? previousRow[valueField] : 0
       }
-    },
-    fixturePath
+    }
   })
 
-  if (result.isLive) {
-    const delta = computeDelta(result.data.value, result.data.previousValue, { goodWhenDown })
-    return { key, label, value: result.data.value, previousValue: result.data.previousValue, delta: delta.text, deltaGood: delta.deltaGood, href, isLive: true }
+  if (result.status !== STATUS.LIVE) {
+    return { key, label, value: null, previousValue: null, delta: null, deltaGood: undefined, href, status: result.status }
   }
 
-  const fixture = loadFixture(fixturePath)
-  return { key, label, value: fixture.count, previousValue: null, delta: fixture.delta, deltaGood: undefined, href, isLive: false }
+  const delta = computeDelta(result.data.value, result.data.previousValue, { goodWhenDown })
+  return { key, label, value: result.data.value, previousValue: result.data.previousValue, delta: delta.text, deltaGood: delta.deltaGood, href, status: STATUS.LIVE }
 }
 
 // Takes the already-fetched conjunction-events/stats result rather than fetching itself
 // — one call shared between both collision tiles, not two. No month-over-month delta:
 // this is a lifetime total, not a date-ranged figure, so a delta would be meaningless —
 // shown as none rather than a fabricated comparison.
-function buildConjunctionStatsTile ({ key, label, href, fixturePath, valueField, statsResult }) {
-  if (statsResult.isLive) {
-    return { key, label, value: statsResult.data[valueField], previousValue: null, delta: null, href, isLive: true }
+function buildConjunctionStatsTile ({ key, label, href, valueField, statsResult }) {
+  if (statsResult.status !== STATUS.LIVE) {
+    return { key, label, value: null, previousValue: null, delta: null, href, status: statsResult.status }
   }
-
-  const fixture = loadFixture(fixturePath)
-  return { key, label, value: fixture.count, previousValue: null, delta: fixture.delta, deltaGood: undefined, href, isLive: false }
+  return { key, label, value: statsResult.data[valueField], previousValue: null, delta: null, href, status: STATUS.LIVE }
 }
 
 // Mirrors buildConjunctionStatsTile above, but the live value here is already a plain
@@ -147,28 +144,16 @@ function buildConjunctionStatsTile ({ key, label, href, fixturePath, valueField,
 // not an object keyed by valueField. No delta: computing "vs last month" would mean a
 // second background-only fetch for the previous month, doubling the slow-endpoint load
 // for a comparison that isn't the point of this tile.
-function buildConjunctionMonthTile ({ key, label, href, fixturePath, monthResult }) {
-  if (monthResult.isLive) {
-    return { key, label, value: monthResult.data, previousValue: null, delta: null, href, isLive: true }
+function buildConjunctionMonthTile ({ key, label, href, monthResult }) {
+  if (monthResult.status !== STATUS.LIVE) {
+    return { key, label, value: null, previousValue: null, delta: null, href, status: monthResult.status }
   }
-
-  const fixture = loadFixture(fixturePath)
-  return { key, label, value: fixture.count, previousValue: null, delta: fixture.delta, deltaGood: undefined, href, isLive: false }
-}
-
-function buildDonutFromFixtureEntries (entries) {
-  return buildDonut(entries.map((entry) => ({ label: entry.label, value: entry.value })))
+  return { key, label, value: monthResult.data, previousValue: null, delta: null, href, status: STATUS.LIVE }
 }
 
 async function buildMonthlyOverviewViewModel (requestedMonth) {
   const selectedMonth = parseMonthParam(requestedMonth) || currentMonth()
   const previousMonth = shiftMonths(selectedMonth, -1)
-
-  const asteroids = loadFixture('asteroids/summary.json')
-  const spaceWeather = loadFixture('space-weather/summary.json')
-  const ukObjects = loadFixture('resident-space-objects/uk-objects.json')
-  const otherAlerts = loadFixture('monthly-overview/other-alerts.json')
-  const serviceStatus = loadFixture('monthly-overview/service-status.json')
 
   const [
     reentryCountTile,
@@ -186,7 +171,6 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
       sectionKey: 're-entry',
       label: 'Uncontrolled Re-Entries',
       href: '/re-entry',
-      fixturePath: 're-entry/count.json',
       fetchRows: fetchReentryMonthlyRows,
       valueField: 'count',
       goodWhenDown: true,
@@ -197,7 +181,6 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
       sectionKey: 're-entry',
       label: 'Re-Entry Alerts from NSpOC',
       href: '/re-entry',
-      fixturePath: 're-entry/alert-count.json',
       fetchRows: fetchReentryMonthlyRows,
       valueField: 'alert_count',
       goodWhenDown: true,
@@ -208,7 +191,6 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
       sectionKey: 'launches',
       label: 'Global Launches',
       href: '/launches',
-      fixturePath: 'launches/summary.json',
       fetchRows: fetchLaunchesMonthlyRows,
       valueField: 'count',
       selectedMonth
@@ -218,24 +200,22 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
       sectionKey: 'collision-fragmentation',
       label: 'Fragmentation Incidents',
       href: '/collision-fragmentation',
-      fixturePath: 'collision-fragmentation/fragmentation-count.json',
       fetchRows: fetchFragmentationMonthlyRows,
       valueField: 'count',
       goodWhenDown: true,
       selectedMonth
     }),
-    getSectionData('re-entry', { liveFetcher: () => fetchReentryByObjectTypeRows(selectedMonth), fixturePath: 're-entry/by-object-type.json' }),
-    getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionStats, fixturePath: 'collision-fragmentation/risk-count.json' }),
-    getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionListForDonut, fixturePath: 'collision-fragmentation/events.json' }),
-    getSectionData('collision-fragmentation', { liveFetcher: fetchEventsForAnalysis, fixturePath: 'collision-fragmentation/events-for-analysis.json' }),
-    getSectionData('collision-fragmentation', { liveFetcher: () => fetchConjunctionMonthlyTotal(selectedMonth), fixturePath: 'collision-fragmentation/monthly-total.json' })
+    getSectionData('re-entry', { liveFetcher: () => fetchReentryByObjectTypeRows(selectedMonth) }),
+    getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionStats }),
+    getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionListForDonut }),
+    getSectionData('collision-fragmentation', { liveFetcher: fetchEventsForAnalysis }),
+    getSectionData('collision-fragmentation', { liveFetcher: () => fetchConjunctionMonthlyTotal(selectedMonth) })
   ])
 
   const collisionRiskTile = buildConjunctionStatsTile({
     key: 'collision-risk',
     label: 'Collision Risks to UK Satellites (current snapshot)',
     href: '/collision-fragmentation',
-    fixturePath: 'collision-fragmentation/risk-count.json',
     valueField: 'conjunction_event_total_count',
     statsResult: conjunctionStatsResult
   })
@@ -244,7 +224,6 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     key: 'collision-alerts',
     label: 'Collision Alerts from NSpOC (current snapshot)',
     href: '/collision-fragmentation',
-    fixturePath: 'collision-fragmentation/alert-count.json',
     valueField: 'conjunction_event_alert_count',
     statsResult: conjunctionStatsResult
   })
@@ -255,27 +234,27 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
   const collisionAnalysisTile = {
     key: 'collision-analysis-required',
     label: 'Collision Events Requiring Analyst Review',
-    value: eventsForAnalysisResult.data.length,
+    value: eventsForAnalysisResult.status === STATUS.LIVE ? eventsForAnalysisResult.data.length : null,
     previousValue: null,
     delta: null,
     href: '/collision-fragmentation',
-    isLive: eventsForAnalysisResult.isLive
+    status: eventsForAnalysisResult.status
   }
 
-  // The genuine month-scoped figure, via the background-only fetch above. Deliberately
+  // The genuine month-scoped figure, via the fast -aggregated endpoint above. Deliberately
   // not directly comparable to "Collision Risks to UK Satellites (current snapshot)" —
-  // that's a live
-  // snapshot of the current catalogue (one row per event, most-recent CDM only); this is
-  // every screening recorded against the selected month specifically, across every CDM
-  // revision issued that month, which is why it can be a larger number even though it's
-  // "narrower" in time. Both facts are spelled out in the page's explainer text.
+  // that's a live snapshot of the current catalogue (one row per event, most-recent CDM
+  // only); this is every screening recorded against the selected month specifically,
+  // across every CDM revision issued that month, which is why it can be a larger number
+  // even though it's "narrower" in time. It's also a raw screening count, not NSpOC's
+  // reported figure — see the caveat below and CLAUDE.md's "Known open issue" section.
   const collisionMonthTile = buildConjunctionMonthTile({
     key: 'collision-month-total',
     label: 'Collision Risks (This Month)',
     href: '/collision-fragmentation',
-    fixturePath: 'collision-fragmentation/monthly-total.json',
     monthResult: conjunctionMonthTotalResult
   })
+  collisionMonthTile.caveat = "This is every MSH screening recorded this month, not NSpOC's reported figure — see Data sources."
 
   const tiles = [
     reentryCountTile,
@@ -287,53 +266,52 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     {
       key: 'asteroids-count',
       label: 'Close Approach Asteroids',
-      value: asteroids.closeApproachCount,
+      value: null,
       previousValue: null,
-      delta: asteroids.closeApproachDelta,
+      delta: null,
       href: '/asteroids',
-      isLive: false
+      status: STATUS.NOT_CONNECTED
     },
     {
       key: 'asteroid-alerts',
       label: 'Asteroid Alerts from NSpOC',
-      value: asteroids.alertCount,
+      value: null,
       previousValue: null,
-      delta: asteroids.alertDelta,
+      delta: null,
       href: '/asteroids',
-      isLive: false
+      status: STATUS.NOT_CONNECTED
     },
     {
       key: 'space-weather-alerts',
       label: 'Space Weather Alerts from Met Office',
-      value: spaceWeather.alertCount,
+      value: null,
       previousValue: null,
-      delta: spaceWeather.delta,
-      deltaGood: true,
+      delta: null,
       href: '/space-weather',
-      isLive: false
+      status: STATUS.NOT_CONNECTED
     },
     launchesTile,
     fragmentationTile,
     {
       key: 'uk-objects',
       label: 'UK Objects in Space',
-      value: ukObjects.count,
+      value: null,
       previousValue: null,
-      delta: ukObjects.delta,
+      delta: null,
       href: '/resident-space-objects',
-      isLive: false
+      status: STATUS.NOT_CONNECTED
     },
     {
       key: 'other-alerts',
       label: 'Other Alerts / Issues',
-      value: otherAlerts.count,
+      value: null,
       previousValue: null,
-      delta: otherAlerts.delta,
-      isLive: false
+      delta: null,
+      status: STATUS.NOT_CONNECTED
     }
   ]
 
-  const reentryDonut = reentryObjectTypeRows.isLive
+  const reentryDonut = reentryObjectTypeRows.status === STATUS.LIVE
     ? buildDonut(
         Object.entries(
           reentryObjectTypeRows.data
@@ -345,9 +323,9 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
             }, {})
         ).map(([label, value]) => ({ label, value }))
       )
-    : buildDonut([{ label: 'No data available this reporting period', value: 1 }])
+    : buildDonut([])
 
-  const collisionDonut = conjunctionListResult.isLive
+  const collisionDonut = conjunctionListResult.status === STATUS.LIVE
     ? buildDonut(
         Object.entries(
           conjunctionListResult.data.reduce((acc, event) => {
@@ -357,7 +335,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
           }, {})
         ).map(([label, value]) => ({ label, value }))
       )
-    : buildDonut([{ label: 'No data available this reporting period', value: 1 }])
+    : buildDonut([])
 
   const monthOptions = listRecentMonths(MONTH_OPTIONS_COUNT).map((month) => ({
     value: monthKey(month),
@@ -371,11 +349,11 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     monthOptions,
     tiles,
     donuts: [
-      { title: 'Re-Entry', chart: reentryDonut, isLive: reentryObjectTypeRows.isLive, href: '/re-entry' },
-      { title: 'Collision', chart: collisionDonut, isLive: conjunctionListResult.isLive, href: '/collision-fragmentation' },
-      { title: 'Asteroids', chart: buildDonutFromFixtureEntries(asteroids.donut), isLive: false, href: '/asteroids' },
-      { title: 'Space Weather', chart: buildDonutFromFixtureEntries(spaceWeather.donut), isLive: false, href: '/space-weather' },
-      { title: 'Service Status', chart: buildDonutFromFixtureEntries(serviceStatus.donut), isLive: false, href: null }
+      { title: 'Re-Entry', chart: reentryDonut, status: reentryObjectTypeRows.status, href: '/re-entry' },
+      { title: 'Collision', chart: collisionDonut, status: conjunctionListResult.status, href: '/collision-fragmentation' },
+      { title: 'Asteroids', chart: buildDonut([]), status: STATUS.NOT_CONNECTED, href: '/asteroids' },
+      { title: 'Space Weather', chart: buildDonut([]), status: STATUS.NOT_CONNECTED, href: '/space-weather' },
+      { title: 'Service Status', chart: buildDonut([]), status: STATUS.NOT_CONNECTED, href: null }
     ]
   }
 }

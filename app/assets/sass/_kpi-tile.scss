@@ -30,6 +30,11 @@
   margin-bottom: govuk-spacing(1);
 }
 
+.msh-kpi-tile__value--empty {
+  @include govuk-font($size: 19, $weight: bold);
+  color: govuk-colour("black", $variant: "tint-25");
+}
+
 .msh-kpi-tile__label {
   display: block;
   @include govuk-font($size: 16);
@@ -55,4 +60,14 @@
 .msh-kpi-tile__badge {
   display: block;
   margin-top: govuk-spacing(2);
+}
+
+// A persistent, always-visible caveat for a figure that's genuinely live but a known
+// different metric to what it might be compared against — deliberately not hidden in a
+// collapsed explainer, since that's what let this go unnoticed by orbital analysts.
+.msh-kpi-tile__caveat {
+  display: block;
+  @include govuk-font($size: 16);
+  color: govuk-colour("brown");
+  margin-top: govuk-spacing(1);
 }

@@ -51,6 +51,11 @@ govukPrototypeKit.views.addFunction('mshFooterNavigation', () => [
     title: 'Dashboard sections',
     columns: 2,
     items: sections.map((section) => ({ href: section.href, text: section.text }))
+  },
+  {
+    title: 'About this data',
+    columns: 1,
+    items: [{ href: '/data-sources', text: 'Data sources' }]
   }
 ])
 
