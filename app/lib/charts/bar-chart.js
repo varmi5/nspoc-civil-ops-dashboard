@@ -1,5 +1,5 @@
-// Pure maths, no rendering — mirrors donut.js. Turns a series of { month, count } entries
-// (already in display order, latest-first — see month-strip.njk) into bar geometry for a
+// Pure maths, no rendering — mirrors donut.js. Turns a series of { month, count, alertCount? }
+// entries (already in display order, latest-first — see month-strip.njk) into bar geometry for a
 // fixed-height SVG viewBox, scaled to that series' own max so a sparse dataset (e.g.
 // fragmentation incidents, mostly 0-1) and a dense one (e.g. conjunction events, tens of
 // thousands) both fill the available height sensibly.
@@ -20,7 +20,9 @@ function buildBarChart (entries) {
       width: Math.round(barWidth * 100) / 100,
       height: Math.round(barHeight * 100) / 100,
       label: entry.month,
-      value: entry.count
+      value: entry.count,
+      alertCount: entry.alertCount,
+      analysisCount: entry.analysisCount
     }
   })
 

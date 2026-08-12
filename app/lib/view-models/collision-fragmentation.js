@@ -79,6 +79,28 @@ async function fetchFragmentationByType () {
   return mshRequest('/v1/stats/fragmentation-events/by-fragmentation-type')
 }
 
+// MSH has no monthly "alert" figure for conjunctions, unlike re-entry's alert_count (see
+// tech-docs "Open questions"). Bucketing /for-analysis events by TCA month is the closest
+// available stand-in: how many of the events currently past the probability threshold
+// had their closest approach in a given month. Because /for-analysis only ever returns
+// the current outstanding queue, not a historical archive, a month's count can still
+// drop later as those events get resolved — it's an approximation, not a true historical
+// total, which is why it's surfaced as "needing analysis" rather than "alerts".
+function bucketAnalysisEventsByMonth (events, months) {
+  const byMonth = events.reduce((acc, event) => {
+    if (!event.tca_time) return acc
+    const date = new Date(event.tca_time)
+    const key = monthKey({ year: date.getFullYear(), month: date.getMonth() })
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
+  return listRecentMonths(months).reduce((acc, month) => {
+    const key = monthKey(month)
+    acc[key] = byMonth[key] || 0
+    return acc
+  }, {})
+}
+
 // /for-analysis rows carry a real collision_probability and each object's physical
 // details inline — a genuinely different, richer shape from the general list, not
 // interchangeable with buildCollisionRow below.
@@ -133,6 +155,10 @@ async function buildCollisionFragmentationViewModel (requestedMonths) {
   const analysisRows = eventsForAnalysisResult.status === STATUS.LIVE ? eventsForAnalysisResult.data.map(buildAnalysisRow) : []
   const fragmentationRows = fragmentationListResult.status === STATUS.LIVE ? fragmentationListResult.data.map(buildFragmentationRow) : []
 
+  const analysisEventsByMonth = eventsForAnalysisResult.status === STATUS.LIVE
+    ? bucketAnalysisEventsByMonth(eventsForAnalysisResult.data, months)
+    : {}
+
   const riskDonut = conjunctionListResult.status === STATUS.LIVE
     ? buildDonut(
         Object.entries(
@@ -153,7 +179,11 @@ async function buildCollisionFragmentationViewModel (requestedMonths) {
   // immediately, not after scrolling right past everything older. The bar chart uses the
   // same latest-first order/data as the cards (buildBarChart just plots whatever order
   // it's given), so switching views never reorders anything underneath the reader.
-  const trend = trendRows.slice().reverse().map((row) => ({ month: formatMonth(row.month), count: row.count }))
+  const trend = trendRows.slice().reverse().map((row) => ({
+    month: formatMonth(row.month),
+    count: row.count,
+    analysisCount: analysisEventsByMonth[row.month]
+  }))
   const fragmentationTrend = fragTrendRows.slice().reverse().map((row) => ({ month: formatMonth(row.month), count: row.count }))
 
   return {

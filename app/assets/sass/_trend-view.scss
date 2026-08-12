@@ -69,6 +69,12 @@
   color: govuk-colour("black", $variant: "tint-25");
 }
 
+.msh-bar-chart__label-sub {
+  display: block;
+  @include govuk-font($size: 16);
+  color: govuk-colour("black", $variant: "tint-25");
+}
+
 @media print {
   // The cards view already unwraps to show everything on paper — no need for a second,
   // interactive graph view in a static export.

@@ -9,7 +9,7 @@ never the only way to read a value.
     <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" preserveAspectRatio="none" class="msh-bar-chart__svg" role="img" aria-label="{{ title }} — see the labels below for exact values">
       {% for bar in chart.bars %}
         <rect x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.width }}" height="{{ bar.height }}" class="msh-bar-chart__bar">
-          <title>{{ bar.label }}: {{ bar.value }}</title>
+          <title>{{ bar.label }}: {{ bar.value }}{% if bar.alertCount is defined %} ({{ bar.alertCount }} alert{{ "s" if bar.alertCount != 1 }}){% elif bar.analysisCount is defined %} ({{ bar.analysisCount }} needing analysis){% endif %}</title>
         </rect>
       {% endfor %}
     </svg>
@@ -18,6 +18,11 @@ never the only way to read a value.
         <div class="msh-bar-chart__label-item">
           <span class="msh-bar-chart__label-month">{{ bar.label }}</span>
           <span class="msh-bar-chart__label-value">{{ bar.value }}</span>
+          {% if bar.alertCount is defined %}
+            <span class="msh-bar-chart__label-sub">{{ bar.alertCount }} alert{{ "s" if bar.alertCount != 1 }}</span>
+          {% elif bar.analysisCount is defined %}
+            <span class="msh-bar-chart__label-sub">{{ bar.analysisCount }} needing analysis</span>
+          {% endif %}
         </div>
       {% endfor %}
     </div>

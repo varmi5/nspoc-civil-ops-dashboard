@@ -163,13 +163,27 @@ function computeDelta (current, previous, { goodWhenDown } = {}) {
 <p class="govuk-body">The Re-Entry map draws its own grid instead of using a map tile service.</p>
 <p class="govuk-body">Reason: avoids sending object-tracking queries to an external company.</p>
 
+<h3 class="govuk-heading-s">Country, not coordinates, for re-entry location</h3>
+<p class="govuk-body">Re-entry locations are shown as a country name (e.g. "United Kingdom"), not latitude/longitude, using <code>@rapideditor/country-coder</code>. It looks up the country entirely on the server, from a bundled dataset, with no external request for any coordinate.</p>
+<p class="govuk-body">Reason: different users mainly need to know whether their own country should be concerned, not exact degrees, and sending OFFICIAL-classified coordinates to a third-party geocoding service isn't an option, the same reasoning behind not using a map tile provider above. The trade-off: this library favours size and speed over precision, and only loosely covers water, so predictions well out at sea often show as "No country (predicted over ocean)" rather than a nearest country.</p>
+
 <h2 class="govuk-heading-l" id="open-questions">Open questions</h2>
 <ul class="govuk-list govuk-list--bullet">
   <li>The collision risk figure reported for the current month does not match NSpOC's own reported figure. No MSH endpoint currently produces the narrower figure NSpOC reports.</li>
   <li>Space weather ratings are a first draft. NSpOC has not signed off on them.</li>
   <li>Space weather uses NOAA, a US feed. MOSWOC, the Met Office's own service, has been identified as the correct source. This has not been implemented.</li>
   <li>There is no automated test suite. Changes are checked manually, and with the scripts in <code>scripts/</code>.</li>
+  <li>There's no per-month "alert" figure for conjunctions from MSH, unlike re-entries, which get <code>alert_count</code> directly from MSH's monthly endpoint. The conjunction trend cards instead show events past the analysis threshold that month, bucketed from the current outstanding-review queue and labelled "needing analysis" rather than "alerts". Because that queue only ever holds currently-outstanding events, a month's count can still drop later as those events get resolved, so it's an approximation, not a true historical total. Fragmentation's trend has no equivalent figure at all yet.</li>
 </ul>
+
+<h3 class="govuk-heading-s">Why the monthly collision figure runs high</h3>
+<p class="govuk-body">"Collision Risks (This Month)" on the Monthly Overview page counts every screened object pair MSH recorded that month. It's typically much larger than NSpOC's own reported monthly figure. Monthly volume is volatile too, one month measured 2,357 against 40,000 to 78,000 in the surrounding months, so a fair comparison depends on which month you check.</p>
+<p class="govuk-body">Two causes we've ruled out:</p>
+<ul class="govuk-list govuk-list--bullet">
+  <li>Duplicate CDM revisions: we tested a 2,000-event sample and found none.</li>
+  <li>A missing UK filter: 91.8% of events already involve a UK-licensed object, so this data is UK-scoped by construction, not global.</li>
+</ul>
+<p class="govuk-body">We checked MSH's full API spec directly. No endpoint or filter produces the narrower, analyst-reviewed figure NSpOC reports. The closest candidate, a <code>report</code> filter on a different endpoint, returns close to zero rows a month, nowhere near NSpOC's figure either. We've raised this with the MSH/NSpOC team.</p>
 
 <h2 class="govuk-heading-l" id="glossary">Glossary</h2>
 <ul class="govuk-list govuk-list--bullet">

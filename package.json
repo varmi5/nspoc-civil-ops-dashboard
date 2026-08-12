@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@govuk-prototype-kit/common-templates": "3.0.0",
+    "@rapideditor/country-coder": "^5.6.1",
     "govuk-frontend": "6.3.0",
     "govuk-prototype-kit": "13.20.2"
   }

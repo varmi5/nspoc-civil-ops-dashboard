@@ -7,6 +7,7 @@ const { highestRisk } = require('../format-risk')
 const { formatDate, formatDateTime, formatMonth } = require('../format-date')
 const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths } = require('../date-range')
 const { normaliseLongitude, hasResolvedLocation } = require('../geo')
+const { feature: countryFeature } = require('@rapideditor/country-coder')
 const { projectPoint, buildGraticule } = require('../charts/world-projection')
 
 const ALLOWED_TREND_PERIODS = [1, 3, 6, 12, 24]
@@ -24,14 +25,22 @@ function bucketObjectType (objectType) {
   return 'Debris / Unknown'
 }
 
+// Countries are more useful here than raw coordinates — different users (from different
+// countries, or different FCDO sub-departments) mainly need to know whether their own
+// country should be concerned, not exact degrees. Looked up fully offline via
+// @rapideditor/country-coder: MSH's TIP data has no country field tied to the predicted
+// decay coordinates, and sending OFFICIAL-classified coordinates to a third-party
+// geocoding service isn't an option (see the map's own "no third-party provider"
+// decision). This library's border data favours size and lookup speed over precision,
+// and only loosely covers water, so a prediction well out at sea often resolves to no
+// country at all.
 function formatLocation (tip) {
-  if (!tip || tip.latitude === null || tip.latitude === undefined || tip.longitude === null || tip.longitude === undefined) {
+  if (!hasResolvedLocation(tip)) {
     return 'Unknown'
   }
   const longitude = normaliseLongitude(tip.longitude)
-  const latDir = tip.latitude >= 0 ? 'N' : 'S'
-  const lonDir = longitude >= 0 ? 'E' : 'W'
-  return `${Math.abs(tip.latitude).toFixed(1)}°${latDir}, ${Math.abs(longitude).toFixed(1)}°${lonDir}`
+  const region = countryFeature([longitude, tip.latitude])
+  return region ? region.properties.nameEn : 'No country (predicted over ocean)'
 }
 
 function sortTipsByMostRecent (tips) {

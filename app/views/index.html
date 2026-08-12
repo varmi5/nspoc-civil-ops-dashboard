@@ -26,21 +26,12 @@
     {{ kpiTile(tile) }}
   {% endfor %}
 </div>
+<p class="govuk-body-s">Green means the figure has improved on last month, red means it has worsened, and grey means no change or no comparison available. Brown text is a note about how that particular figure is measured.</p>
 
 {{ explainer("What do these figures mean, and where do they come from?", "
   <p class='govuk-body'>What the labels mean: <strong>Live from MSH API</strong> is fetched directly from the Monitor Space Hazards service on this request. <strong>No data available</strong> means the figure is wired up to live data, but the service didn't respond this time. <strong>No live data source connected</strong> means there's no live source yet. Either way, we never substitute a placeholder number.</p>
-  <p class='govuk-body'>“Collision Risks to UK Satellites” and “Collision Alerts from NSpOC” (both marked \"current snapshot\") reflect the current tracked catalogue: one row per event, most recent revision only. They don't move when you change the month above, which is why the label stays \"current snapshot\".</p>
-  <ul class='govuk-list govuk-list--bullet'>
-    <li>There's no lifetime total available. Requesting the full historical archive times out.</li>
-    <li>Neither figure is filtered to UK-licensed satellites specifically. We checked the full OpenAPI parameter list for every conjunction and satellite endpoint, and no such filter exists yet.</li>
-  </ul>
-  <p class='govuk-body'><strong>Collision Risks (This Month)</strong> is genuinely month-scoped and live, pulled straight from MSH's monthly conjunction-events breakdown, a fast, purpose-built endpoint that stays well under a second even over a 12-month range.</p>
-  <p class='govuk-body'>It's a big number because it counts every screened object pair recorded that month, tens of thousands most months. Two things we've ruled out as the cause:</p>
-  <ul class='govuk-list govuk-list--bullet'>
-    <li>Duplicate CDM revisions: we tested a 2,000-event sample and found zero duplicates.</li>
-    <li>A missing UK filter: 91.8% of events already involve a UK-licensed object, so this data is UK-scoped by construction, not global.</li>
-  </ul>
-  <p class='govuk-body'>It's typically much larger than NSpOC's own reported monthly figure, though monthly volume is volatile too (one month measured 2,357, against 40,000 to 78,000 in the surrounding months), so a fair comparison depends on which month you check. We checked MSH's full API spec directly: no endpoint or filter produces the narrower, analyst-reviewed figure NSpOC actually reports. The closest candidate, a <code>report</code> filter on a different endpoint, returns close to zero rows a month, nowhere near NSpOC's figure either. That's a genuine gap in what MSH exposes today, not something we can query around. We've raised it with the MSH/NSpOC team.</p>
+  <p class='govuk-body'>“Collision Risks to UK Satellites” and “Collision Alerts from NSpOC” (both marked \"current snapshot\") reflect the current tracked catalogue, not the month you've selected above, since that endpoint has no date-range filter. There's also no lifetime total available, and neither figure is filtered to UK-licensed satellites specifically, since no such filter exists in the MSH API yet.</p>
+  <p class='govuk-body'><strong>Collision Risks (This Month)</strong> is genuinely month-scoped and live, but it's typically much larger than NSpOC's own reported monthly figure. That's because it counts every screened object pair MSH recorded that month, tens of thousands most months, not the smaller, analyst-reviewed figure NSpOC reports, which MSH doesn't currently expose. See the caveat on the tile, or <a class='govuk-link' href='/tech-docs#open-questions'>the full investigation</a> for how we ruled out duplicate records and a missing UK filter as the cause.</p>
   <p class='govuk-body'>“Collision Events Requiring Analyst Review” is different again: it counts events that have crossed a real computed collision-probability threshold and need an analyst's attention right now. It's a current outstanding-review count, not a historical monthly total.</p>
   <p class='govuk-body'><a class='govuk-link' href='/data-sources'>See the exact endpoint behind every figure on this page</a>.</p>
 ") }}
