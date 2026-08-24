@@ -1,8 +1,7 @@
 const config = require('./config')
 
-// No auth needed (public API) — confirmed live (scripts/investigate-noaa-alerts-shape.js):
-// 200 in ~130ms for the full current alert set. Same fixed-timeout-and-throw contract as
-// app/lib/msh/client.js so the view-model's live/fixture fallback works the same way.
+// No auth needed, public API, typically responds in ~130ms. Same fixed-timeout-and-throw
+// contract as app/lib/msh/client.js so the live/fixture fallback behaves the same way.
 const REQUEST_TIMEOUT_MS = 4000
 
 async function fetchAlerts () {

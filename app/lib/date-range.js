@@ -19,9 +19,8 @@ function currentMonth () {
   return { year: now.getFullYear(), month: now.getMonth() }
 }
 
-// "2026-07" -> { year: 2026, month: 6 } (zero-indexed, matching Date's own convention).
-// Returns null for anything malformed, so callers can safely fall back to the current
-// month rather than trust an unvalidated query string.
+// "2026-07" -> { year: 2026, month: 6 }, zero-indexed to match Date. Returns null for
+// anything malformed, so callers can fall back to the current month.
 function parseMonthParam (value) {
   if (!value || !/^\d{4}-\d{2}$/.test(value)) return null
   const [year, monthNumber] = value.split('-').map(Number)

@@ -1,25 +1,22 @@
-// Some MSH endpoints have been observed responding slowly enough to hit our request
-// timeout on every call (e.g. /v1/stats/monthly/conjunction-events with a date range).
-// A plain TTL cache still means the first request after every TTL expiry pays that full
-// timeout cost — measured at ~4.4s cold vs ~0.3s warm on this exact endpoint.
+// Some MSH endpoints respond slowly enough to hit our request timeout on every call
+// (e.g. /v1/stats/monthly/conjunction-events with a date range). A plain TTL cache still
+// pays that full timeout cost on the first request after every expiry, measured at
+// ~4.4s cold vs ~0.3s warm on this endpoint.
 //
-// This instead serves stale-but-real data immediately once a key has been fetched
-// successfully at least once, and refreshes it in the background — a user only ever
-// waits out a slow/failing endpoint on the very first request for a given key (e.g. the
-// first time anyone asks for a brand new reporting month), never on any request after
-// that. This is the standard "stale-while-revalidate" HTTP caching pattern.
+// Instead this serves stale-but-real data immediately once a key has succeeded once, and
+// refreshes it in the background. A user only ever waits out a slow endpoint on the very
+// first request for a key (e.g. a brand new reporting month), never after. Standard
+// stale-while-revalidate.
 const STALE_AFTER_MS = 5 * 60 * 1000 // age at which a background refresh is triggered
 const FAILURE_RETRY_MS = 30 * 1000 // how soon to retry a key that has NEVER succeeded
 
 const cache = new Map()
 const refreshesInFlight = new Set()
-// Coalesces concurrent COLD-miss requests for the same key into one shared promise.
-// Confirmed live (scripts/diagnose-concurrent-load.js, verify-cache-warmer.js): without
-// this, two callers racing on a brand-new key — e.g. buildReEntryViewModel() and
-// buildReEntryMapViewModel() both wanting /v1/satellites/with-metadata at once — each fired
-// their own duplicate live request instead of sharing one, doubling load for no benefit and
-// contributing to individual requests tipping over the 4s abort timeout under real
-// concurrent page loads.
+// Coalesces concurrent cold-miss requests for the same key into one shared promise.
+// Without this, two callers racing on a brand new key (e.g. buildReEntryViewModel and
+// buildReEntryMapViewModel both wanting /v1/satellites/with-metadata at once) would each
+// fire their own duplicate live request, doubling load and making it more likely a
+// request tips over the 4s abort timeout under concurrent page loads.
 const coldFetchesInFlight = new Map()
 
 function refreshInBackground (key, fn) {
@@ -28,9 +25,8 @@ function refreshInBackground (key, fn) {
   fn()
     .then((data) => cache.set(key, { data, timestamp: Date.now() }))
     .catch((err) => {
-      // Deliberately keep the previous cached value on a failed background refresh —
-      // stale-but-real data is more useful than none, and the next refresh attempt will
-      // try again once this entry is stale again.
+      // Keep the previous cached value on a failed background refresh. Stale-but-real
+      // data beats none, and the next refresh will try again once it's stale again.
       console.error(`Background refresh failed for ${key}, keeping previous cached value: ${err.message}`)
     })
     .finally(() => refreshesInFlight.delete(key))
@@ -42,7 +38,7 @@ async function withCache (key, fn) {
 
   if (entry && 'data' in entry) {
     if (now - entry.timestamp >= STALE_AFTER_MS) {
-      refreshInBackground(key, fn) // fire-and-forget — caller still gets the stale value now
+      refreshInBackground(key, fn) // fire-and-forget, caller still gets the stale value now
     }
     return entry.data
   }

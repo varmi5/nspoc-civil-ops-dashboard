@@ -1,6 +1,5 @@
-// A fixed-height, internally-scrolling wrapper for a table — used so a long tracked-objects
-// list doesn't push the rest of the page down, mirroring the same "scroll within a
-// contained area, not the whole page" principle as the month-strip.
+// Fixed-height scrolling wrapper so a long tracked-objects list doesn't push the rest of
+// the page down. Same "scroll within a contained area" idea as the month-strip.
 .msh-scroll-panel {
   max-height: 420px;
   overflow-y: auto;

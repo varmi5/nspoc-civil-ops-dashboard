@@ -7,16 +7,14 @@
   border: 1px solid govuk-functional-colour(border);
 }
 
-// The map embedded inline on the Re-Entry page itself — shorter than the dedicated Re-Entry
-// Map page's version, since it sits alongside a table and charts rather than being the
-// whole page.
+// Inline map on the Re-Entry page, shorter than the dedicated Re-Entry Map page since it
+// sits alongside a table and charts rather than being the whole page.
 .msh-map__mapbox--embedded {
   height: 350px;
 }
 
-// Mapbox markers are plain buttons (not the map's own SVG), positioned by Mapbox itself —
-// only their appearance is styled here. The same class is reused on plain <span>s for the
-// static risk-colour legend (see present/re-entry-map.html), hence display/vertical-align.
+// Markers are plain buttons, Mapbox positions them, this only styles appearance.
+// Also reused on plain <span>s for the risk-colour legend, hence display/vertical-align.
 .msh-map__marker {
   display: inline-block;
   vertical-align: middle;

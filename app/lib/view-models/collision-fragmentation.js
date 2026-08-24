@@ -10,11 +10,9 @@ const {
 } = require('../date-range')
 const { ANALYSIS_THRESHOLD } = require('../msh/conjunction-analysis')
 
-// The trend charts always show a fixed 12-month window ending at the selected reporting
-// month — matching NSpOC's own chart, which shows a year of history regardless of which
-// single month the donuts below are reporting on. This isn't a user-choosable "look back
-// N months" control (that's the separate fragmentation-incidents table selector below) —
-// it's fixed so the chart's shape stays predictable.
+// Trend charts always show a fixed 12-month window ending at the selected reporting
+// month, matching NSpOC's own chart. Not user-choosable (that's the separate
+// fragmentation-incidents table selector below), it's fixed so the shape stays predictable.
 const TREND_WINDOW_MONTHS = 12
 const MONTH_OPTIONS_COUNT = 24
 
@@ -26,10 +24,9 @@ function resolveFragmentationLookback (requested) {
   return ALLOWED_FRAGMENTATION_LOOKBACK.includes(parsed) ? parsed : DEFAULT_FRAGMENTATION_LOOKBACK
 }
 
-// epoch=all + a generous limit, same pattern as re-entry's fetchReentryListRaw — real
+// epoch=all + a generous limit, same pattern as re-entry's fetchReentryListRaw. Real
 // fragmentation incidents are rare (single digits a year), so unlike conjunction events
-// (tens of thousands a month) this list is small enough to filter by month client-side
-// rather than needing a date-range endpoint MSH doesn't provide.
+// (tens of thousands a month) this list is small enough to filter by month client-side.
 async function fetchFragmentationListRaw () {
   return mshRequest('/v1/fragmentation-events/?epoch=all&limit=200&sort_by=event_epoch&sort_order=desc')
 }
@@ -44,10 +41,9 @@ async function fetchFragmentationMonthlyRows (months, endMonth) {
   return mshRequest(`/v1/stats/monthly/fragmentation-events?start_date=${toDateString(startOfMonth(start))}&end_date=${toDateString(endOfMonth(endMonth))}`)
 }
 
-// Neither monthly-breakdown endpoint returns a zero-filled calendar (confirmed: a 12-month
-// fragmentation request can come back with only 2 rows) — fill the gaps so the trend
-// always shows one point per month in the window, anchored at `endMonth` rather than
-// always "today", so this works regardless of which reporting month is selected.
+// Neither monthly-breakdown endpoint returns a zero-filled calendar (a 12-month
+// fragmentation request can come back with only 2 rows). Fill the gaps so the trend
+// always shows one point per month, anchored at `endMonth` not "today".
 function fillMonthlySeries (rows, months, endMonth) {
   const byMonth = rows.reduce((acc, row) => {
     acc[row.month] = (acc[row.month] || 0) + row.count
@@ -63,11 +59,10 @@ function fillMonthlySeries (rows, months, endMonth) {
 }
 
 // Conjunction rows carry a probability-band breakdown, not a single count. The raw
-// monthly total (tens of thousands of screenings) used to be plotted here too, but it's
-// dropped entirely — it's so far from NSpOC's own reported figure that showing it at all,
-// even alongside a caveat, read as simply wrong. The "> 1e-3" band — screenings that
-// crossed the analysis threshold — is what's shown, as the closest available proxy for
-// NSpOC's own "Alerts Issued" line (MSH has no literal alerts concept for conjunctions).
+// monthly total (tens of thousands of screenings) used to be plotted too, but it's so far
+// from NSpOC's reported figure it read as simply wrong, so it's dropped. The "> 1e-3" band
+// (screenings past the analysis threshold) is shown instead, as the closest proxy for
+// NSpOC's "Alerts Issued" line (MSH has no literal alerts concept for conjunctions).
 function fillConjunctionMonthlySeries (rows, months, endMonth) {
   const byMonth = rows.reduce((acc, row) => {
     acc[row.month] = row['> 1e-3'] || 0
@@ -125,8 +120,8 @@ async function buildCollisionFragmentationViewModel (requestedMonth, requestedFr
     })
     .map(buildFragmentationRow)
 
-  // Latest month first for the line charts (matches re-entry's convention — buildLineChart
-  // itself re-reverses to chronological for plotting).
+  // Latest month first, matches re-entry's convention (buildLineChart re-reverses to
+  // chronological for plotting).
   const rawTrend = fillConjunctionMonthlySeries(aggregatedRows, TREND_WINDOW_MONTHS, selectedMonth).slice().reverse()
   const rawFragmentationTrend = fillMonthlySeries(fragTrendRows, TREND_WINDOW_MONTHS, selectedMonth).slice().reverse()
   const trend = rawTrend.map((row) => ({ month: formatMonth(row.month), count: row.count }))

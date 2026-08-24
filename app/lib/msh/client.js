@@ -2,10 +2,10 @@ const config = require('./config')
 const tokenCache = require('./token-cache')
 const { withCache } = require('./response-cache')
 
-// Some MSH endpoints (observed: /v1/stats/monthly/conjunction-events, the non-aggregated
-// variant — not used by this app anymore, see conjunction-events-aggregated instead) can
-// 504 slowly rather than fail fast. Without a bound, a single slow endpoint would stall
-// page rendering indefinitely instead of falling back to fixture data promptly.
+// Some MSH endpoints (e.g. /v1/stats/monthly/conjunction-events, non-aggregated, no
+// longer used here, see conjunction-events-aggregated) can 504 slowly rather than fail
+// fast. Bound it so one slow endpoint can't stall the page instead of falling back to
+// fixture data.
 const REQUEST_TIMEOUT_MS = 4000
 
 async function requestOnce (path, options, timeoutMs) {
@@ -44,18 +44,16 @@ async function requestAndParse (path, options, timeoutMs) {
   return response.json()
 }
 
-// Cached for a short TTL (see response-cache.js) — this is a reporting dashboard, not a
-// real-time feed, so a few minutes' staleness is an acceptable trade for not re-hitting a
-// slow endpoint on every page load, and for not hammering MSH with duplicate requests.
+// Cached for a short TTL (see response-cache.js). This is a reporting dashboard, not a
+// real-time feed, so a few minutes' staleness is fine in exchange for not hammering MSH.
 //
-// timeoutMs defaults to REQUEST_TIMEOUT_MS but can be overridden per call — confirmed live
-// that /v1/reentry-events/?epoch=all&limit=2000 alone takes ~1.6-1.9s with zero contention
-// (it's a ~2.5MB response), close enough to the default 4s budget that it's the first
-// thing to tip over under any concurrent load. Callers with a similarly large response
-// should pass a longer timeoutMs rather than lowering everyone else's fail-fast budget.
+// timeoutMs defaults to REQUEST_TIMEOUT_MS but can be overridden per call.
+// /v1/reentry-events/?epoch=all&limit=2000 alone takes ~1.6-1.9s uncontended (~2.5MB
+// response), close enough to the 4s default that it's first to tip over under load.
+// Give large-response callers a longer timeoutMs rather than lowering everyone else's.
 async function mshRequest (path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   if (!config.useLiveMsh) {
-    throw new Error('mshRequest called while USE_LIVE_MSH is not "true" — use getSectionData() with a fixture fallback instead')
+    throw new Error('mshRequest called while USE_LIVE_MSH is not "true", use getSectionData() with a fixture fallback instead')
   }
 
   return withCache(path, () => requestAndParse(path, options, timeoutMs))

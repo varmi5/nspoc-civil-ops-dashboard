@@ -1,11 +1,9 @@
 {#
-Renders a row of plain links (one per option), each a normal GET request that reloads the
-page with a new query param value — no client-side state, works without JavaScript,
+Row of plain links, each reloads the page with a new query param value, no JS needed,
 bookmarkable. The active option gets aria-current="true" plus a highlighted style.
-`extraQuery` (optional) is an object of other query params to carry over into every link —
-needed on any page with a second, independent selector alongside this one (e.g. Collision
-& Fragmentation's reporting-month picker), so changing this period doesn't silently reset
-the other control back to default.
+`extraQuery` (optional) carries over other query params, needed when a page has a
+second independent selector (e.g. Collision & Fragmentation's month picker), so
+changing this period doesn't reset it.
 #}
 {% macro periodSelector(basePath, currentValue, options, paramName, unitLabel, extraQuery) %}
   <div class="msh-period-selector" role="group" aria-label="Choose time period">

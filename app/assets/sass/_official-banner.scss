@@ -1,6 +1,5 @@
-// Matches the real report's own classification marking — plain, small, centred black
-// text, not a heavy filled block. A solid black bar reads as an error/alert state on a
-// GOV.UK page, which undermines the marking rather than making it clearer.
+// Matches the real report's classification marking: plain, small, centred black text,
+// not a filled block. A solid black bar reads as an error state on a GOV.UK page.
 .official-banner {
   text-align: center;
   color: govuk-colour("black");

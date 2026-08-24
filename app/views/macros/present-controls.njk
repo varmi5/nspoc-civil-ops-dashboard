@@ -1,8 +1,7 @@
 {#
-`nav` is the object returned by app/lib/present-nav.js: {slides, index, total, current,
-prevHref, nextHref}. prevHref/nextHref are plain <a> links (rel="prev"/"next") so slide
-navigation works with no JavaScript; application.js progressively enhances them with
-ArrowLeft/ArrowRight keyboard shortcuts.
+`nav` comes from app/lib/present-nav.js: {slides, index, total, current, prevHref,
+nextHref}. prevHref/nextHref are plain links so navigation works with no JS,
+application.js adds arrow-key shortcuts on top.
 #}
 {% macro presentControls(nav) %}
   <div class="msh-present-controls govuk-!-display-none-print">

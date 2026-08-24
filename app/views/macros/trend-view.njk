@@ -3,15 +3,13 @@
 {% from "macros/line-chart.njk" import lineChart %}
 
 {#
-Wraps the existing month-strip card view with an alternative graph view, toggleable via
-two buttons. Cards remain the default and only rendering with no JS — the toggle buttons
-are hidden until JS confirms it can wire them up (same pattern as print-link.njk), and the
-graph panel stays hidden until switched to, so nothing changes for anyone without
-JavaScript. `idPrefix` must be unique per call on a page with more than one trend view
-(e.g. Collision & Fragmentation has both a conjunction and a fragmentation trend).
-`chart` is the object returned by app/lib/charts/bar-chart.js or line-chart.js — built in
-the view-model, same convention as donutChart's `chart` param. `chartType` picks which
-("bar", the default, or "line" — matching NSpOC's own two-series Re-Entry trend chart).
+Wraps the month-strip card view with a toggleable graph view. Cards are the default and
+the only thing that renders with no JS, the toggle buttons stay hidden until JS
+confirms it can wire them up (same pattern as print-link.njk). `idPrefix` must be
+unique per call when a page has more than one trend view (e.g. Collision &
+Fragmentation has two). `chart` comes from app/lib/charts/bar-chart.js or
+line-chart.js, built in the view-model. `chartType` picks which, "bar" (default) or
+"line".
 #}
 {% macro trendView(idPrefix, title, months, chart, chartType) %}
   <div class="msh-trend-view" data-msh-trend-view>

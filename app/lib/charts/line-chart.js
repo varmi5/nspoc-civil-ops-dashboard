@@ -1,8 +1,5 @@
-// Pure maths, no rendering — mirrors bar-chart.js. Turns a series of
-// { month, count, alertCount? } entries (already in display order, latest-first — see
-// month-strip.njk) into two polylines sharing one scale, matching NSpOC's own "Number of
-// Re-Entries Tracked" chart (count + alerts issued on the same axis) rather than the
-// single-series bar chart this replaces on the Re-Entry page.
+// Pure maths, no rendering, mirrors bar-chart.js. Turns { month, count, alertCount? }
+// entries into two polylines, matching NSpOC's "Number of Re-Entries Tracked" chart.
 const VIEWBOX_WIDTH = 600
 const VIEWBOX_HEIGHT = 260
 const POINT_INSET = 12 // keeps the first/last point's circle marker from clipping at the edge
@@ -19,23 +16,19 @@ function pointsFor (entries, key, maxValue) {
   }))
 }
 
-// Matches NSpOC's own chart, which plots "Number of Collision Events" and "Alerts Issued"
-// on two separate y-axes rather than one shared scale. Sharing one scale looks fine when
-// the two series are comparable in size (re-entry: dozens vs dozens), but for conjunction
-// events (tens of thousands vs single digits) it flattens the smaller series to a straight
-// line along the bottom — each series is scaled independently to its own max instead, so
-// both are readable regardless of how differently sized they are.
+// Each series is scaled to its own max rather than one shared scale. A shared scale
+// works for re-entry (dozens vs dozens) but flattens conjunction events (tens of
+// thousands vs single digits) into a flat line at the bottom.
 function buildLineChart (entries) {
-  // NSpOC's chart is oldest-to-newest left-to-right — the reverse of the month-strip
-  // card view (latest-first) these entries arrive in.
+  // NSpOC's chart runs oldest to newest left to right, the reverse of the order
+  // entries arrive in.
   const chronological = entries.slice().reverse()
   const countMax = Math.max(...chronological.map((entry) => entry.count), 1)
 
   const countPoints = pointsFor(chronological, 'count', countMax)
 
-  // Fragmentation's trend has no alerts-equivalent field at all (MSH doesn't distinguish
-  // "alerts" from incidents for fragmentation) — draw only the one real line rather than a
-  // fake flat-zero second line that would look like a genuine (empty) data series.
+  // MSH doesn't distinguish "alerts" from incidents for fragmentation, so draw only
+  // the one real line rather than a fake flat-zero second series.
   const hasAlertSeries = chronological.some((entry) => entry.alertCount !== undefined)
   let alertLine = null
   if (hasAlertSeries) {

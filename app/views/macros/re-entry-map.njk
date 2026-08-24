@@ -1,13 +1,12 @@
 {#
-Real Mapbox GL JS world map. Markers are plotted client-side by assets/javascripts/
-re-entry-map.js, which reads the JSON data island below (marker lat/lon/risk/etc. and
-the Mapbox access token) and boots the map into [data-msh-mapbox-map]. `mapData` is the
-object returned by buildReEntryMapViewModel or buildReEntryViewModel's own `mapData`.
-`variant` is "full" (default, the dedicated Re-Entry Map page — Mapbox's 3D globe view)
-or "embedded" (a shorter map inline on the Re-Entry page itself, forced to a flat
-Mercator projection so it's screenshottable straight into a report, matching NSpOC's own
-flat map slide — see _map.scss for the height difference). Each call gets its own
-container id (idPrefix) since a page could embed more than one.
+Mapbox GL map, markers plotted client-side by assets/javascripts/re-entry-map.js from
+the JSON data island below. `mapData` comes from buildReEntryMapViewModel or
+buildReEntryViewModel.
+
+`variant` is "full" (default, dedicated Re-Entry Map page, 3D globe) or "embedded"
+(inline on the Re-Entry page, flat Mercator so it's screenshottable for reports, see
+_map.scss). `idPrefix` gives each call its own container id in case a page embeds
+more than one.
 #}
 {% macro reEntryMap(mapData, variant, idPrefix) %}
   <div class="msh-map" data-msh-map>

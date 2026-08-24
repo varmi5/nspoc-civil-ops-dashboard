@@ -1,13 +1,10 @@
-// Boots the Mapbox GL map on the Re-Entry Map page/slide, and on the smaller map embedded
-// on the Re-Entry page. Progressive enhancement: the container and data island render
-// server-side regardless, this just fills the container in once mapbox-gl (loaded via CDN
-// in the page's own <script> tags) is available.
+// Boots the Mapbox GL map on the Re-Entry Map page/slide and the smaller embedded map
+// on the Re-Entry page. Container and data render server-side either way, this just
+// fills it in once mapbox-gl loads.
 //
-// Runs once at initial page load, and again on every application.js fast-nav swap (e.g.
-// clicking the Re-Entry page's reporting-period selector) — that swap replaces the whole
-// #main-content subtree, including this container, but doesn't re-run page <script> tags,
-// so without this the map would only ever exist for the very first render and silently go
-// blank on every subsequent period change.
+// Also re-runs on application.js's fast-nav swap event, since that replaces
+// #main-content (including this container) without re-running page <script> tags.
+// Without this the map would go blank after the first period change.
 (function () {
   var currentMap = null
 
@@ -15,9 +12,8 @@
     var container = document.querySelector('[data-msh-mapbox-map]')
     var dataScript = document.querySelector('[data-msh-mapbox-data]')
 
-    // The previous swap's container (and the map attached to it) is gone from the DOM
-    // either way — always tear down the old instance so it isn't left listening for
-    // events (resize, etc.) against a detached canvas.
+    // Always tear down the old map instance first, otherwise it's left listening for
+    // events against a detached canvas.
     if (currentMap) {
       currentMap.remove()
       currentMap = null
@@ -28,11 +24,9 @@
     var mapData = JSON.parse(dataScript.textContent)
     mapboxgl.accessToken = mapData.accessToken
 
-    // The dedicated Re-Entry Map page keeps Mapbox's default 3D globe view. The map
-    // embedded on the Re-Entry page is meant to be screenshotted straight into a report —
-    // like NSpOC's own flat "Re-Entry Map (Reporting Period)" slide — so it's forced to a
-    // flat Mercator projection instead, set via data-msh-map-projection on the container
-    // (see views/macros/re-entry-map.njk).
+    // The Re-Entry Map page keeps Mapbox's 3D globe. The embedded map on the Re-Entry
+    // page is forced to flat Mercator instead, since it's meant to be screenshotted
+    // straight into a report like NSpOC's own flat "Re-Entry Map (Reporting Period)" slide.
     var projection = container.dataset.mshMapProjection || 'globe'
 
     var map = new mapboxgl.Map({
@@ -47,10 +41,9 @@
     map.addControl(new mapboxgl.NavigationControl())
 
     mapData.markers.forEach(function (marker) {
-      // A plain button, not a link: Mapbox's own click handling toggles the popup, so
-      // making this element itself a navigating <a> would fight that. The "open full
-      // detail" link lives inside the popup instead — select once for a summary, select
-      // the link in it to go to the full Tracking and Impact Prediction (TIP) page.
+      // Plain button, not a link, since Mapbox's click handling toggles the popup and
+      // a navigating <a> here would fight that. The full TIP detail link lives inside
+      // the popup instead.
       var el = document.createElement('button')
       el.type = 'button'
       el.className = 'msh-map__marker msh-map__marker--' + (marker.risk ? marker.risk.toLowerCase() : 'pending')

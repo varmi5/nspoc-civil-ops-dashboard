@@ -1,8 +1,7 @@
 {#
-Renders the object returned by app/lib/charts/bar-chart.js as an accessible SVG bar chart.
-Each bar carries a native <title> (basic tooltip, zero JS, matches the re-entry map's
-marker pattern) plus a visible month/value label underneath — colour and bar height are
-never the only way to read a value.
+Renders the object from app/lib/charts/bar-chart.js as an SVG bar chart. Each bar has a
+native <title> tooltip plus a visible label underneath, so colour and height are never
+the only way to read a value.
 #}
 {% macro barChart(title, chart) %}
   <div class="msh-bar-chart">

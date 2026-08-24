@@ -1,7 +1,6 @@
-// Pure maths, no rendering — the donut-chart.njk macro turns this into SVG <circle>
-// segments (stroke-dasharray/stroke-dashoffset, rotated -90deg so 0% starts at 12
-// o'clock) plus a legend list. Radius is chosen so the circumference is ~100, letting
-// percentages map almost directly onto dash lengths.
+// Pure maths, no rendering, donut-chart.njk turns this into SVG circle segments plus a
+// legend. Radius is chosen so the circumference is ~100, letting percentages map
+// almost directly onto dash lengths.
 const RADIUS = 15.9155
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 

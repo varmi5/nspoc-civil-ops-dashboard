@@ -1,9 +1,9 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 
 {#
-Same shape as risk-tag.njk's riskTag macro, for a different vocabulary: Green/Yellow/Red
-sector status rather than a risk-assessment enum. See sector-rules.js for how this status
-is derived — flagged there as a first draft, not yet signed off by NSpOC.
+Same shape as riskTag in risk-tag.njk, but for Green/Yellow/Red sector status. See
+sector-rules.js for how it's derived, flagged there as a first draft, not yet signed
+off by NSpOC.
 #}
 {% macro sectorStatusTag(status) %}
   {% if status == "Red" %}

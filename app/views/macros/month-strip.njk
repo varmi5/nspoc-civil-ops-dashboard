@@ -1,9 +1,7 @@
 {#
-Renders a monthly trend as a horizontally-scrolling strip of compact cards (scan left to
-right across months) instead of a tall vertical table you have to scroll down through.
-`months` is an array of { month, count, alertCount? } — alertCount is optional; the sub-line
-is only shown when it's actually provided (Re-Entry's trend has one, Collision &
-Fragmentation's plain event-count trend doesn't).
+Renders a monthly trend as a horizontally-scrolling strip of cards instead of a long
+vertical table. `months` is { month, count, alertCount? }, the sub-line only shows when
+alertCount is provided (Re-Entry's trend has one, Collision & Fragmentation's doesn't).
 #}
 {% macro monthStrip(months) %}
   <div class="msh-month-strip">

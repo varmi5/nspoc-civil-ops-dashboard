@@ -1,6 +1,5 @@
-// MSH returns longitude in a mix of -180..180 and 0..360 conventions depending on the
-// source feed — normalise to -180..180 so downstream formatting/projection code doesn't
-// have to worry about which convention a given record used.
+// MSH returns longitude as either -180..180 or 0..360 depending on the source feed.
+// Normalise to -180..180 so downstream code doesn't need to care which one it got.
 function normaliseLongitude (longitude) {
   let value = longitude % 360
   if (value > 180) value -= 360

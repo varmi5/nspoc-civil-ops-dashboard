@@ -9,8 +9,7 @@ const sections = require('./config/sections')
 
 // Add your filters here
 
-// Exposes the section list to templates (e.g. the home page's link-out list), so it
-// stays the one place that list is maintained rather than being copied into a view.
+// Exposes the section list to templates so it stays the one place it's maintained.
 govukPrototypeKit.views.addFunction('mshSections', () => sections)
 
 govukPrototypeKit.views.addFunction('mshNavigation', (currentSection) =>
@@ -21,9 +20,8 @@ govukPrototypeKit.views.addFunction('mshNavigation', (currentSection) =>
   }))
 )
 
-// Mirrors MSH's own breadcrumb convention (Home / Section / Current page) — no
-// breadcrumb on the true home page itself (it never sets currentSection, so the lookup
-// below simply finds nothing), and the current page is always the final, unlinked item.
+// Mirrors MSH's breadcrumb convention: Home / Section / Current page. No breadcrumb on
+// the home page itself, since it never sets currentSection.
 govukPrototypeKit.views.addFunction('mshBreadcrumbs', (currentSection, pageName) => {
   const section = sections.find((candidate) => candidate.key === currentSection)
   if (!section) {
@@ -42,10 +40,8 @@ govukPrototypeKit.views.addFunction('mshBreadcrumbs', (currentSection, pageName)
   return items
 })
 
-// Mirrors MSH's real footer (src/templates/components/Footer.tsx +
-// AppConfig.footerNavigation): a titled navigation block above the standard footer
-// meta links. Built from the same section list the top nav uses, rather than a
-// separate hand-maintained link list, so it can't drift out of sync with real routes.
+// Mirrors MSH's real footer (src/templates/components/Footer.tsx + AppConfig.footerNavigation).
+// Built from the same section list as the top nav, so it can't drift out of sync.
 govukPrototypeKit.views.addFunction('mshFooterNavigation', () => [
   {
     title: 'Dashboard sections',

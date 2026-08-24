@@ -1,8 +1,6 @@
-// Full-bleed hero band matching MSH's real authenticated home page
-// (src/app/(auth)/home/page.tsx: the light-blue #D2E2F1 band with the logo stacked
-// above the H1 and subtitle) — not the side-by-side lockup used only on MSH's separate
-// sign-in page. Breaks out of the surrounding govuk-width-container to span the full
-// viewport width, same technique MSH itself uses (w-[100vw] + centring transform).
+// Matches MSH's authenticated home page (src/app/(auth)/home/page.tsx), not the
+// side-by-side lockup on MSH's sign-in page. Breaks out of govuk-width-container to span
+// the full viewport, same trick MSH uses (w-[100vw] plus a centring transform).
 .msh-hero {
   background-color: #d2e2f1;
   position: relative;

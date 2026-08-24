@@ -1,9 +1,9 @@
 {% from "govuk/components/details/macro.njk" import govukDetails %}
 
 {#
-GOV.UK's accessible alternative to a hover-tooltip "i" icon — a keyboard-operable, no-JS
-expandable disclosure. Use this instead of a tooltip: tooltips don't work on touch
-devices and are a known accessibility gap the Design System deliberately avoids.
+GOV.UK's accessible alternative to a hover-tooltip icon: a keyboard-operable, no-JS
+disclosure. Use this instead of a tooltip, tooltips don't work on touch and the Design
+System avoids them.
 #}
 {% macro explainer(summaryText, html) %}
   {{ govukDetails({

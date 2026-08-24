@@ -13,9 +13,8 @@ function enhancePrintLinks (root) {
   })
 }
 
-// Copy button on tech docs code blocks (macros/code-block.njk) — hidden until here, same
-// reasoning as enhancePrintLinks: copying to the clipboard needs JS, so there's no point
-// showing the button to a no-JS visitor at all.
+// Copy button on tech docs code blocks. Hidden until JS enhances it, same as
+// enhancePrintLinks, since copying to clipboard needs JS anyway.
 function enhanceCodeBlocks (root) {
   root.querySelectorAll('.msh-code-block').forEach((block) => {
     const button = block.querySelector('.msh-code-block__copy')
@@ -39,9 +38,8 @@ function enhanceMonthSelectors (root) {
   })
 }
 
-// Card view / graph view toggle for a trend-view.njk instance. Hidden until here (see
-// .msh-trend-view__toggle--hidden) so a no-JS visitor only ever sees the cards panel
-// that's already rendered server-side — same reasoning as enhancePrintLinks above.
+// Card/graph toggle for a trend-view.njk instance. Hidden until enhanced so a no-JS
+// visitor just sees the server-rendered cards panel.
 function enhanceTrendViews (root) {
   root.querySelectorAll('[data-msh-trend-view]').forEach((container) => {
     const toggle = container.querySelector('.msh-trend-view__toggle')
@@ -70,12 +68,9 @@ function enhance (root) {
   enhanceTrendViews(root)
 }
 
-// Progressive enhancement for the period/month filters (period-selector links, the
-// month-selector form): swaps just <main> via fetch instead of a full page navigation,
-// so switching between "3 months" and "12 months" (or between reporting months) doesn't
-// flash/reload the whole page. Both controls are plain GET links/forms underneath, so
-// this degrades to a normal full navigation if JavaScript or fetch is unavailable, or if
-// the fetch fails for any reason.
+// Period/month filters swap just <main> via fetch instead of a full page reload.
+// Both controls are plain GET links/forms, so this falls back to normal navigation
+// if JS or the fetch fails.
 function initFastNav () {
   const main = document.getElementById('main-content')
   const status = document.getElementById('msh-fast-nav-status')
@@ -94,18 +89,14 @@ function initFastNav () {
       main.innerHTML = nextMain.innerHTML
       document.title = nextDocument.title
       if (pushState) window.history.pushState({ mshFastNav: true }, '', url)
-      // The initial page load's govuk-frontend initAll() (see govuk-prototype-kit's own
-      // init.js) only ever scans the DOM once — swapped-in markup (e.g. a freshly-rendered
-      // govukTabs component after changing the period selector) needs its own JS
-      // component init, or things like tab-switching silently stop working.
+      // govuk-frontend's initAll() only scans the DOM once at page load, so swapped-in
+      // markup (e.g. a govukTabs component) needs re-initialising or tab-switching breaks.
       if (window.GOVUKFrontend && typeof window.GOVUKFrontend.initAll === 'function') {
         window.GOVUKFrontend.initAll({ scope: main })
       }
       enhance(main)
-      // Anything set up once at initial page load (not part of the shared enhance()
-      // pipeline above — e.g. re-entry-map.js booting Mapbox into a specific container)
-      // needs its own signal that swapped-in markup just replaced whatever it was
-      // attached to, since this swap doesn't re-run page <script> tags.
+      // This swap doesn't re-run page <script> tags, so anything set up once at load
+      // (e.g. re-entry-map.js's Mapbox instance) needs this event to know to reinit.
       document.dispatchEvent(new CustomEvent('msh:content-swapped', { detail: { root: main } }))
       if (status) status.textContent = 'Page updated.'
       return true
@@ -137,10 +128,8 @@ function initFastNav () {
   })
 }
 
-// Presentation Mode: ArrowLeft/ArrowRight follow the prev/next slide links (which are
-// plain <a rel="prev"/"next"> underneath — this is a keyboard shortcut on top of normal
-// navigation, not a replacement for it), plus a fullscreen toggle. A no-op on any page
-// that isn't in presentation mode.
+// Presentation Mode: arrow keys follow the prev/next slide links (plain <a rel> links
+// underneath), plus a fullscreen toggle. No-op outside presentation mode.
 function initPresentMode () {
   const controls = document.querySelector('.msh-present-controls')
   if (!controls) return

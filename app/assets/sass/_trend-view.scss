@@ -1,6 +1,5 @@
-// Toggle between the existing month-strip cards and a bar-chart graph view. Hidden until
-// JS confirms it can wire the toggle up (same pattern as .msh-print-link--hidden) — with
-// no JS, only the cards panel (already rendered server-side) is ever shown.
+// Toggle between month-strip cards and the bar-chart graph view. Hidden until JS can
+// wire it up (same pattern as .msh-print-link--hidden); with no JS only the cards show.
 .msh-trend-view__toggle {
   display: flex;
   gap: govuk-spacing(2);
@@ -170,8 +169,8 @@
 }
 
 @media print {
-  // The cards view already unwraps to show everything on paper — no need for a second,
-  // interactive graph view in a static export.
+  // Cards view already shows everything on paper, no need for a second interactive
+  // graph view in a static export.
   .msh-trend-view__toggle {
     display: none;
   }

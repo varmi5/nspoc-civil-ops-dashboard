@@ -1,12 +1,11 @@
-// "Print this page" link (GOV.UK's own established pattern) — hidden until JavaScript
-// confirms window.print() is available, then hidden again specifically when printing so
-// the link itself never appears in the printed/exported output.
+// GOV.UK's "print this page" pattern. Hidden until JS confirms window.print() works,
+// then hidden again when printing so the link itself never shows up in the output.
 .msh-print-link--hidden {
   display: none;
 }
 
-// Keeps KPI tiles, donut charts and table rows from splitting across a page break when a
-// page is printed/exported as PDF — matches how the real monthly report is circulated.
+// Stops KPI tiles, donut charts and table rows splitting across a page break on
+// print/PDF export, matches how the real monthly report is circulated.
 @media print {
   .msh-kpi-tile,
   .msh-donut-chart,
@@ -15,8 +14,8 @@
     break-inside: avoid;
   }
 
-  // A horizontal-scroll strip only shows what's on screen — unwrap it on paper so every
-  // month prints, not just whichever ones were scrolled into view.
+  // The scroll strip only shows what's on screen, unwrap it on paper so every month
+  // prints, not just whatever was scrolled into view.
   .msh-month-strip {
     overflow-x: visible;
     flex-wrap: wrap;
@@ -26,16 +25,14 @@
     display: none;
   }
 
-  // Defeats a JS-applied inline transform from the map's pan/zoom controls, so a printed
-  // page always shows the full, un-zoomed/un-panned view — the one deliberate !important
-  // in this codebase, needed specifically to override an inline style attribute.
+  // Overrides the map's JS-applied inline transform from pan/zoom, so print always shows
+  // the full view. Only deliberate !important in this codebase, needed to beat an inline style.
   .msh-map__zoom-group {
     transform: none !important;
   }
 
-  // Tabs (e.g. Re-Entry's tracked-objects tabs) only show one panel on screen — on paper,
-  // clicking isn't possible, so unwrap every panel and drop the clickable tab list, same
-  // "unwrap for print" treatment as the month-strip above.
+  // Tabs only show one panel on screen, but clicking isn't possible on paper, so unwrap
+  // every panel and drop the tab list. Same treatment as the month-strip above.
   .govuk-tabs__list {
     display: none;
   }

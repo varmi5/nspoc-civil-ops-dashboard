@@ -1,8 +1,7 @@
-// Pure maths, no rendering — mirrors donut.js. Turns a series of { month, count, alertCount? }
-// entries (already in display order, latest-first — see month-strip.njk) into bar geometry for a
-// fixed-height SVG viewBox, scaled to that series' own max so a sparse dataset (e.g.
-// fragmentation incidents, mostly 0-1) and a dense one (e.g. conjunction events, tens of
-// thousands) both fill the available height sensibly.
+// Pure maths, no rendering, mirrors donut.js. Turns { month, count, alertCount? } entries
+// into bar geometry for a fixed-height SVG viewBox, scaled to that series' own max so
+// sparse datasets (fragmentation, mostly 0-1) and dense ones (conjunction events, tens
+// of thousands) both fill the height sensibly.
 const VIEWBOX_WIDTH = 600
 const VIEWBOX_HEIGHT = 200
 const BAR_GAP_RATIO = 0.3

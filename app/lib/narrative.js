@@ -1,8 +1,6 @@
-// Deterministic, template-built plain-English summary sentences — no LLM involved, so
-// there's no hallucination risk for OFFICIAL-classified figures going in front of a
-// minister. Every number here is read straight off the same view-model the Monthly
-// Overview page already renders; this module only chooses which sentences to say and how
-// to phrase a delta, never invents a figure.
+// Deterministic, template-built sentences, no LLM, so there's no hallucination risk for
+// OFFICIAL-classified figures going in front of a minister. Every number comes straight
+// from the Monthly Overview view-model, this module only picks the wording.
 
 function findTile (tiles, key) {
   return tiles.find((tile) => tile.key === key) || null
@@ -57,18 +55,16 @@ function collisionSentence (viewModel) {
   const alertTile = findTile(viewModel.tiles, 'collision-alerts')
   const alertCount = alertTile && alertTile.status === 'live' ? alertTile.value : 0
 
-  // Not UK-scoped — no such filter is confirmed to exist on this endpoint (checked
-  // directly against the full parameter list), so this is worded as the tracked-catalogue
-  // total it actually is, not a UK-specific figure.
+  // Not UK-scoped, this endpoint has no UK filter, so word it as the tracked-catalogue
+  // total it actually is.
   if (alertCount === 0) {
     return `${riskTile.value} conjunction events are on record across the tracked catalogue, none of which reached the highest-risk band.`
   }
   return `${riskTile.value} conjunction events are on record across the tracked catalogue, of which ${alertCount} reached the highest-risk band and prompted an alert.`
 }
 
-// The only conditional sentence — only worth saying if the change is large enough to be
-// narratively interesting, keeping the total sentence count in the 3-5 range rather than
-// padding out every month with routine noise.
+// Only worth saying if the change is large enough to be interesting, keeps the summary
+// from padding out every month with routine noise.
 function fragmentationLaunchesSentence (viewModel) {
   const parts = []
 
@@ -92,10 +88,8 @@ function fragmentationLaunchesSentence (viewModel) {
   return `Elsewhere, ${parts.join(', and ')} compared with ${viewModel.previousMonthLabel}.`
 }
 
-// Keeps the auto-generated prose honest about the same live/unavailable/not-connected
-// distinction the mshBadge already shows on every card — this isn't hidden in the
-// narrative. No figure is ever substituted for a missing one, so this only ever says
-// what's absent, never a stand-in number.
+// Surfaces the same live/unavailable/not-connected distinction the mshBadge shows on
+// every card. Never substitutes a stand-in number for a missing figure.
 function dataQualitySentence (viewModel) {
   const unavailable = viewModel.tiles.filter((tile) => tile.status === 'unavailable').length
   const notConnected = viewModel.tiles.filter((tile) => tile.status === 'not-connected').length
@@ -109,8 +103,8 @@ function dataQualitySentence (viewModel) {
   return null
 }
 
-// Unconditional filler — only used if fewer than 3 sentences fired above, so the summary
-// never reads as suspiciously thin.
+// Filler, only used if fewer than 3 sentences fired above, so the summary doesn't read
+// as thin.
 function closingSentence (viewModel) {
   const ukTile = findTile(viewModel.tiles, 'uk-objects')
   if (ukTile && ukTile.status === 'live') {

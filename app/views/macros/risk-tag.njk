@@ -1,11 +1,10 @@
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 
 {#
-Confirmed via the reentry/conjunction/fragmentation report schemas: Risk is a six-value
-enum — None, Very low, Low, Medium, High, Pending. Colours match MSH's own riskClasses
-mapping (src/utils/Tags.tsx) verbatim, since that's the canonical risk→colour source of
-truth for the real service. "Pending" and null both mean "not yet assessed" and get the
-same honest blue "Pending analysis" tag, rather than guessing.
+Risk is a six-value enum (None, Very low, Low, Medium, High, Pending) per the report
+schemas. Colours match MSH's riskClasses mapping (src/utils/Tags.tsx) exactly.
+"Pending" and null both mean not yet assessed, so both get the blue "Pending analysis"
+tag.
 #}
 {% macro riskTag(risk) %}
   {% if risk == "High" or risk == "Critical" %}

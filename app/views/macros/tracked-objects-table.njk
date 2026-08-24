@@ -1,9 +1,9 @@
 {% from "macros/risk-tag.njk" import riskTag %}
 
 {#
-Renders one tab panel's worth of the tracked re-entry objects table. Wrapped in
-.msh-scroll-panel (fixed max-height, internal scroll) rather than left to grow the whole
-page's length — same "scrollable, not page-length" principle as the month-strip above it.
+Renders one tab panel's tracked re-entry objects table. Wrapped in .msh-scroll-panel
+(fixed max-height, internal scroll) so it doesn't grow the whole page, same principle
+as the month-strip above it.
 #}
 {% macro trackedObjectsTable(rows, emptyMessage) %}
   <div class="msh-scroll-panel">

@@ -1,4 +1,4 @@
-// Ordered slide registry for Presentation Mode — extensible as more sections get built
+// Ordered slide registry for Presentation Mode, extensible as more sections get built
 // (mirrors the pattern of app/config/sections.js).
 module.exports = [
   { key: 'summary', title: 'Executive Summary', href: '/present/summary', exitHref: '/summary' },

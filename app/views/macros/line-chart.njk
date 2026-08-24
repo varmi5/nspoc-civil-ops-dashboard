@@ -1,18 +1,16 @@
 {#
-Renders the object returned by app/lib/charts/line-chart.js: one or two lines sharing a
-chart but NOT a scale — each line is independently scaled to its own max (see line-chart.js
-for why: sharing one scale flattens a much-smaller series to a flat line at the bottom).
-Each point carries a native <title> tooltip, same accessibility pattern as bar-chart.njk —
-colour is never the only way to read a value, the legend and the labels underneath name
-each line and give its exact figures. `countLabel`/`alertLabel` default to re-entry's own
-wording; pass different labels for a page where "alerts" isn't the right word (e.g.
-Collision & Fragmentation's second line is a probability-threshold count, not an alert).
-`alertShortLabel` (defaults to "alerts") is what's repeated under every single point in the
-compact label strip below the chart — keep this to one or two words, since `alertLabel`
-itself is meant for the legend/tooltip and is too long to repeat 12 times in a row.
-`chart.alertLine` is null when there's no second series at all (e.g. fragmentation, which
-MSH has no alerts-equivalent figure for) — that line/legend/label is skipped entirely
-rather than drawing a fake flat line.
+Renders the object from app/lib/charts/line-chart.js: one or two lines sharing a chart
+but not a scale, each is independently scaled to its own max (see line-chart.js, sharing
+a scale would flatten the smaller series). Points carry native <title> tooltips, same
+pattern as bar-chart.njk.
+
+`countLabel`/`alertLabel` default to re-entry's wording, pass different labels when
+"alerts" isn't right (e.g. Collision & Fragmentation's second line is a
+probability-threshold count, not an alert). `alertShortLabel` (default "alerts") repeats
+under every point in the label strip, so keep it to one or two words.
+
+`chart.alertLine` is null when there's no second series (e.g. fragmentation has no
+alerts-equivalent figure), that line is skipped rather than drawing a fake flat line.
 #}
 {% macro lineChart(title, chart, countLabel, alertLabel, alertShortLabel) %}
   {% set countLabel = countLabel or "Number of Re-Entries" %}

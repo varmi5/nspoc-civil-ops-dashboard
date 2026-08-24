@@ -8,9 +8,8 @@ const { currentMonth, parseMonthParam, monthKey, monthLabel, listRecentMonths } 
 
 const MONTH_OPTIONS_COUNT = 24
 
-// Mirrors getSectionData's live/status contract (app/lib/msh/get-section-data.js) but
-// isn't MSH — NOAA needs no credentials and isn't gated by USE_LIVE_MSH, so it gets its own
-// small equivalent rather than being forced through the MSH-specific one.
+// Mirrors getSectionData's live/status contract but isn't MSH. NOAA needs no credentials
+// and isn't gated by USE_LIVE_MSH, so it gets its own small equivalent.
 function isConfiguredForLive () {
   return isSectionLiveCapable('space-weather') && spaceWeatherConfig.useLiveSpaceWeather
 }
@@ -28,13 +27,11 @@ async function getAlerts () {
   }
 }
 
-// NOAA's issue_datetime is UTC (confirmed live — no timezone marker, but SWPC's own docs
-// and the values themselves are UTC), and alert.issueDate (parse-alert.js) is a plain
-// substring of that UTC string, not a parsed/converted Date. Days here are built and keyed
-// entirely in UTC to match — mixing in local-timezone getters (as date-range.js's
-// startOfMonth/endOfMonth and format-date.js's formatDate do, correctly, for the rest of
-// the app's mostly-local-display data) would silently shift a day's alerts onto the wrong
-// row on any server not running in a UK-aligned timezone.
+// NOAA's issue_datetime is UTC (no timezone marker, but SWPC's docs and the values
+// confirm it), and alert.issueDate (parse-alert.js) is a plain substring of that string,
+// not a parsed Date. Days here are built and keyed entirely in UTC to match, mixing in
+// local-timezone getters (as date-range.js and format-date.js correctly do elsewhere)
+// would silently shift a day's alerts onto the wrong row on a non-UK-timezone server.
 function daysInUtcMonth (month) {
   return new Date(Date.UTC(month.year, month.month + 1, 0)).getUTCDate()
 }

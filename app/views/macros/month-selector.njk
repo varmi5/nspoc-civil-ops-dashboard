@@ -2,12 +2,11 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 
 {#
-A GET form with a native <select> of recent months. The "View" button always works (no
-JS required); application.js progressively enhances the select to auto-submit on change,
-so JS users rarely need to click it. `extraQuery` (optional) is an object of other query
-params to preserve as hidden fields — needed on any page with a second, independent
-selector alongside this one (e.g. Collision & Fragmentation's fragmentation-incidents
-lookback), so picking a month doesn't silently reset the other control back to default.
+GET form with a native month <select>. The "View" button works with no JS,
+application.js progressively enhances the select to auto-submit on change. `extraQuery`
+(optional) preserves other query params as hidden fields, needed when a page has a
+second independent selector (e.g. Collision & Fragmentation's lookback), so picking a
+month doesn't reset it.
 #}
 {% macro monthSelector(basePath, currentValue, options, extraQuery) %}
   <form method="get" action="{{ basePath }}" class="msh-month-selector">
