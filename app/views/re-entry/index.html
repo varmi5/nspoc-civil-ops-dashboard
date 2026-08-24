@@ -8,7 +8,7 @@
 {% from "macros/donut-chart.njk" import donutChart %}
 {% from "macros/print-link.njk" import printLink %}
 {% from "macros/trend-view.njk" import trendView %}
-{% from "macros/period-selector.njk" import periodSelector %}
+{% from "macros/month-selector.njk" import monthSelector %}
 {% from "macros/explainer.njk" import explainer %}
 {% from "macros/present-link.njk" import presentLink %}
 {% from "macros/tracked-objects-table.njk" import trackedObjectsTable %}
@@ -24,12 +24,12 @@
 {{ mshBadge(viewModel.status) }}
 <h1 class="govuk-heading-xl">Re-Entry Early Warning</h1>
 
-<p class="govuk-body">Reporting period: <strong>{{ viewModel.periodStartLabel }} to {{ viewModel.periodEndLabel }}</strong>.</p>
-{{ periodSelector("/re-entry", viewModel.trendMonths, viewModel.trendPeriods, "months", "month") }}
+<p class="govuk-body">Reporting month: <strong>{{ viewModel.selectedMonthLabel }}</strong>.</p>
+{{ monthSelector("/re-entry", viewModel.selectedMonth, viewModel.monthOptions) }}
 
 <div class="msh-kpi-grid">
-  {{ kpiTile({ label: "Uncontrolled Re-Entries Tracked (last " + viewModel.trendMonths + " month" + ("s" if viewModel.trendMonths != 1) + ")", value: viewModel.periodTotalCount }) }}
-  {{ kpiTile({ label: "Re-Entry Alerts Issued (last " + viewModel.trendMonths + " month" + ("s" if viewModel.trendMonths != 1) + ")", value: viewModel.periodAlertCount }) }}
+  {{ kpiTile({ label: "Uncontrolled Re-Entries Tracked (" + viewModel.selectedMonthLabel + ")", value: viewModel.periodTotalCount }) }}
+  {{ kpiTile({ label: "Re-Entry Alerts Issued (" + viewModel.selectedMonthLabel + ")", value: viewModel.periodAlertCount, infoNote: "MSH's own count, not NSpOC's reported alert figure." }) }}
   {{ kpiTile({ label: "Objects Analysed for Risk (current snapshot)", value: viewModel.analysedCount, unit: "of " + viewModel.totalCount + " tracked" }) }}
 </div>
 
@@ -40,28 +40,27 @@
 ") }}
 
 {% if viewModel.objectsTruncated %}
-  <p class="govuk-body-s">Showing the most recent {{ viewModel.objectsCap }} of {{ viewModel.objectsTotalInPeriod }} objects tracked in this reporting period.</p>
+  <p class="govuk-body-s">Showing {{ viewModel.objectsCap }} of {{ viewModel.objectsTotalInPeriod }} objects tracked in {{ viewModel.selectedMonthLabel }}. Every object with an assessed risk is always included; the rest are the most recent by decay date.</p>
 {% endif %}
 
-<h2 class="govuk-heading-l">Number of re-entries tracked (reporting period)</h2>
+<h2 class="govuk-heading-l">Number of re-entries tracked ({{ viewModel.trendWindowMonths }} months to {{ viewModel.selectedMonthLabel }})</h2>
 <p class="govuk-body-s msh-month-strip__scroll-hint">Latest month first. Scroll right for earlier months →</p>
 {{ trendView("reentry-trend", "Number of re-entries tracked", viewModel.trend, viewModel.trendChart, "line") }}
 
-<h2 class="govuk-heading-l">Re-entry map (reporting period)</h2>
+<h2 class="govuk-heading-l">Re-entry map ({{ viewModel.selectedMonthLabel }})</h2>
 <p class="govuk-body">
-  Predicted final re-entry location for each object tracked in this reporting period.
+  Predicted final re-entry location for each object tracked in {{ viewModel.selectedMonthLabel }}.
   {% if viewModel.mapData.unresolvedCount > 0 %}{{ viewModel.mapData.unresolvedCount }} of {{ viewModel.mapData.totalCount }} have no resolved location yet.{% endif %}
-  For every currently tracked object regardless of period, see the <a class="govuk-link govuk-link--no-visited-state" href="/re-entry/map">full interactive map</a>.
+  For every currently tracked object regardless of month, see the <a class="govuk-link govuk-link--no-visited-state" href="/re-entry/map">full interactive map</a>.
 </p>
 {{ reEntryMap(viewModel.mapData, "embedded", "reentry-page-map") }}
 
-<h2 class="govuk-heading-l">Data analysis (reporting period)</h2>
+<h2 class="govuk-heading-l">Data analysis ({{ viewModel.selectedMonthLabel }})</h2>
 {{ donutChart("Object Types", viewModel.objectTypeDonut, viewModel.status) }}
 
-<h2 class="govuk-heading-l">Risks to UK Interests and/or Overflights of UK or UK Overseas Territories (reporting period)</h2>
-<p class="govuk-body">Objects tracked in the selected reporting period whose predicted final re-entry location is the UK or a UK Overseas Territory. Select an object name for its full Tracking and Impact Prediction (TIP) detail.</p>
-<p class="govuk-body">This reflects predicted final re-entry location only. MSH doesn't provide orbital ground track data, so an object that overflew the UK without re-entering there isn't something this table (or MSH) can capture, only the "location" half of the title above.</p>
-{{ trackedObjectsTable(viewModel.ukRiskRows, "No objects predicted to re-enter over the UK or a UK Overseas Territory in this reporting period.") }}
+<h2 class="govuk-heading-l">Risks to UK Interests and/or Overflights of UK or UK Overseas Territories ({{ viewModel.selectedMonthLabel }})</h2>
+<p class="govuk-body">Objects tracked in {{ viewModel.selectedMonthLabel }} that are predicted to land in the UK or a UK Overseas Territory, or that MSH has assessed a UK overflight risk for. Select an object name for its full Tracking and Impact Prediction (TIP) detail.</p>
+{{ trackedObjectsTable(viewModel.ukRiskRows, "No objects with a UK risk tracked in " + viewModel.selectedMonthLabel + ".") }}
 
 <div class="govuk-button-group">
   {{ printLink() }}

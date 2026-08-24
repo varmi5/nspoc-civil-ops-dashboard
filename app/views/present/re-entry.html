@@ -12,11 +12,11 @@
   <div class="msh-present-slide">
     {{ mshBadge(viewModel.status) }}
     <h1 class="msh-present-slide__title">Re-Entry</h1>
-    <p class="msh-present-slide__subtitle">Last {{ viewModel.trendMonths }} month{{ "s" if viewModel.trendMonths != 1 }}</p>
+    <p class="msh-present-slide__subtitle">Reporting month: {{ viewModel.selectedMonthLabel }}</p>
 
     <div class="msh-kpi-grid msh-present-slide__kpi-grid">
       {{ kpiTile({ label: "Re-Entries Tracked", value: viewModel.periodTotalCount }) }}
-      {{ kpiTile({ label: "Re-Entry Alerts Issued", value: viewModel.periodAlertCount }) }}
+      {{ kpiTile({ label: "Re-Entry Alerts Issued", value: viewModel.periodAlertCount, infoNote: "MSH's own count, not NSpOC's reported alert figure." }) }}
       {{ kpiTile({ label: "Objects Analysed for Risk", value: viewModel.analysedCount, unit: "of " + viewModel.totalCount }) }}
     </div>
 

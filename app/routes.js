@@ -17,13 +17,12 @@ const { buildExecutiveSummary } = require('./lib/narrative')
 const { presentNav } = require('./lib/present-nav')
 const { warmCache } = require('./lib/msh/cache-warmer')
 
-// Runs once, when the server boots (routes.js is only required once per process) — see
+// Runs once at server boot, routes.js is only required once per process. See
 // cache-warmer.js for why.
 warmCache()
 
-// The landing page — a hub linking out to each section, mirroring MSH's own
-// authenticated home page. The Monthly Overview report itself lives at its own URL
-// below, same as every other section, rather than being the thing you land on.
+// The landing page: a hub linking out to each section, mirroring MSH's own
+// authenticated home page. Monthly Overview lives at its own URL, not here.
 router.get('/', (req, res) => res.render('home'))
 
 router.get('/monthly-overview', async (req, res, next) => {
@@ -48,7 +47,7 @@ router.get('/summary', async (req, res, next) => {
 
 router.get('/re-entry', async (req, res, next) => {
   try {
-    const viewModel = await buildReEntryViewModel(req.query.months)
+    const viewModel = await buildReEntryViewModel(req.query.month)
     res.render('re-entry/index', { viewModel })
   } catch (err) {
     next(err)
@@ -130,7 +129,7 @@ router.get('/present/monthly-overview', async (req, res, next) => {
 
 router.get('/present/re-entry', async (req, res, next) => {
   try {
-    const viewModel = await buildReEntryViewModel(req.query.months)
+    const viewModel = await buildReEntryViewModel(req.query.month)
     res.render('present/re-entry', { viewModel, nav: presentNav('re-entry') })
   } catch (err) {
     next(err)
