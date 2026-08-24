@@ -5,33 +5,29 @@ Renders one KPI tile. `params`:
   label       (string, required)
   value       (string|number, required unless status is not "live")
   unit        (string, optional)
-  delta       (string, optional) — e.g. "- 20 (29%)"
-  deltaGood   (boolean, optional) — true renders green/up, false renders red/down,
-              omitted renders neutral grey. Decided by the caller, since "up" isn't
-              always good (e.g. more high-risk collision alerts is bad; more UK objects
-              in orbit is neutral/expected growth).
-  href        (string, optional) — wraps the tile in a link when present
-  status      ("live"|"unavailable"|"not-connected", optional) — when passed, renders
-              the badge inside the tile, and when not "live", shows "N/A" in place of
-              `value`/`delta` rather than a number that could be mistaken for real data.
-              The badge below is the one place that explains why — the value itself
-              doesn't repeat that explanation, so it isn't shown twice on the same tile.
-  caveat      (string, optional) — a short, always-visible warning shown under the
-              value even when status is "live", for a figure that's real but knowingly
-              a different metric to what it might be compared against (e.g. the
-              conjunction-events count vs NSpOC's own reported figure). Plain text only
-              — the tile itself may already be a link, so this must never contain one.
+  delta       (string, optional), e.g. "- 20 (29%)"
+  deltaGood   (boolean, optional). True renders green/up, false red/down, omitted is
+              neutral grey. Caller decides, since "up" isn't always good (more high-risk
+              alerts is bad, more UK objects in orbit is just expected growth).
+  href        (string, optional), wraps the value/label/delta in a link when present.
+              The info icon below sits outside this link, a <details> can't nest inside
+              an <a> without breaking keyboard navigation.
+  status      ("live"|"unavailable"|"not-connected", optional). Shows the badge and,
+              when not "live", "N/A" in place of value/delta instead of a number that
+              could be mistaken for real data. The badge explains why, so the value
+              itself doesn't repeat that.
+  caveat      (string, optional), a short always-visible warning under the value even
+              when live, for a figure that's real but not directly comparable (e.g.
+              conjunction-events count vs NSpOC's own reported figure). Plain text only.
+  infoNote    (string, optional), a short note behind an "i" icon instead of shown
+              inline, for a lighter-touch caveat than the always-visible one above.
 #}
 {% macro kpiTile(params) %}
   {% set deltaClass = "msh-kpi-tile__delta--neutral" %}
   {% if params.deltaGood == true %}{% set deltaClass = "msh-kpi-tile__delta--up" %}{% endif %}
   {% if params.deltaGood == false %}{% set deltaClass = "msh-kpi-tile__delta--down" %}{% endif %}
 
-  {% if params.href %}
-    <a class="msh-kpi-tile" href="{{ params.href }}">
-  {% else %}
-    <div class="msh-kpi-tile">
-  {% endif %}
+  {% set content %}
       {% if params.status == "unavailable" or params.status == "not-connected" %}
         <span class="msh-kpi-tile__value msh-kpi-tile__value--empty">N/A</span>
       {% else %}
@@ -47,9 +43,19 @@ Renders one KPI tile. `params`:
       {% if params.status != undefined %}
         <span class="msh-kpi-tile__badge">{{ mshBadge(params.status) }}</span>
       {% endif %}
-  {% if params.href %}
-    </a>
-  {% else %}
-    </div>
-  {% endif %}
+  {% endset %}
+
+  <div class="msh-kpi-tile">
+    {% if params.href %}
+      <a class="msh-kpi-tile__link" href="{{ params.href }}">{{ content | safe }}</a>
+    {% else %}
+      {{ content | safe }}
+    {% endif %}
+    {% if params.infoNote and params.status != "unavailable" and params.status != "not-connected" %}
+      <details class="msh-kpi-tile__info">
+        <summary class="msh-kpi-tile__info-icon" aria-label="More information about this figure">i</summary>
+        <p class="msh-kpi-tile__info-text">{{ params.infoNote }}</p>
+      </details>
+    {% endif %}
+  </div>
 {% endmacro %}

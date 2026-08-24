@@ -1,9 +1,6 @@
-// Value-then-label stat order matches MSH's own KPI tiles (UpcomingEvents.tsx /
-// ObjectsTracked.tsx). The card border stays, though — MSH's real tiles are unboxed, but
-// on this dashboard the tile is the only thing separating one stat from the next in a
-// dense grid, and testing that unboxed made the grid harder to scan, so the box is a
-// deliberate, kept deviation. A CSS grid (rather than flex-wrap's elastic basis) keeps
-// every row's tiles the same width so rows end cleanly instead of raggedly.
+// Value-then-label order matches MSH's own tiles (UpcomingEvents.tsx / ObjectsTracked.tsx).
+// MSH's real tiles are unboxed, but here the border is kept deliberately, it's the only
+// thing separating stats in a dense grid and unboxed tested harder to scan.
 .msh-kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -15,13 +12,20 @@
   display: block;
   border: 1px solid govuk-functional-colour(border);
   padding: govuk-spacing(3);
-  text-decoration: none;
-  color: govuk-functional-colour(text);
 
   &:hover,
-  &:focus {
+  &:focus-within {
     background-color: govuk-colour("black", $variant: "tint-95");
   }
+}
+
+// The clickable value/label/delta area. A separate element from .msh-kpi-tile itself
+// so the info icon's <details> below can sit outside it, nesting <details> inside <a>
+// breaks keyboard navigation.
+.msh-kpi-tile__link {
+  display: block;
+  text-decoration: none;
+  color: govuk-functional-colour(text);
 }
 
 .msh-kpi-tile__value {
@@ -62,12 +66,50 @@
   margin-top: govuk-spacing(2);
 }
 
-// A persistent, always-visible caveat for a figure that's genuinely live but a known
-// different metric to what it might be compared against — deliberately not hidden in a
-// collapsed explainer, since that's what let this go unnoticed by orbital analysts.
+// Always visible, not tucked into a collapsed explainer. Hiding it before is what let
+// analysts miss that this figure isn't quite the metric it's compared against.
 .msh-kpi-tile__caveat {
   display: block;
   @include govuk-font($size: 16);
   color: govuk-colour("brown");
   margin-top: govuk-spacing(1);
+}
+
+// A lighter-touch alternative to .msh-kpi-tile__caveat: tucked behind an icon instead
+// of always shown, for a note that doesn't need to be in the reader's face every time.
+.msh-kpi-tile__info {
+  margin-top: govuk-spacing(1);
+}
+
+.msh-kpi-tile__info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid govuk-colour("black", $variant: "tint-25");
+  color: govuk-colour("black", $variant: "tint-25");
+  font-family: georgia, times, serif;
+  font-size: 12px;
+  font-weight: bold;
+  font-style: italic;
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &:hover,
+  &:focus {
+    border-color: govuk-functional-colour(text);
+    color: govuk-functional-colour(text);
+  }
+}
+
+.msh-kpi-tile__info-text {
+  @include govuk-font($size: 16);
+  color: govuk-colour("black", $variant: "tint-25");
+  margin: govuk-spacing(1) 0 0;
 }
