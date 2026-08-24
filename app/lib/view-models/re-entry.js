@@ -3,20 +3,22 @@ const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
 const { buildLineChart } = require('../charts/line-chart')
 const { STATUS, worstStatus } = require('../msh/status')
-const { highestRisk } = require('../format-risk')
+const { highestRiskOverTime, hasKnownRisk, isRealRiskValue } = require('../format-risk')
 const { formatDate, formatDateTime, formatMonth } = require('../format-date')
-const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths, monthLabel } = require('../date-range')
+const {
+  toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths,
+  monthKey, monthLabel, parseMonthParam, listRecentMonths
+} = require('../date-range')
 const { normaliseLongitude, hasResolvedLocation } = require('../geo')
 const { feature: countryFeature } = require('@rapideditor/country-coder')
 const mapboxConfig = require('../mapbox/config')
 
-const ALLOWED_TREND_PERIODS = [1, 3, 6, 12, 24]
-const DEFAULT_TREND_PERIOD = 12
-
-function resolveTrendPeriod (requestedMonths) {
-  const parsed = Number(requestedMonths)
-  return ALLOWED_TREND_PERIODS.includes(parsed) ? parsed : DEFAULT_TREND_PERIOD
-}
+// The trend graph stays a fixed 12-month cumulative window ending at the selected
+// reporting month, matching Collision & Fragmentation's chart. Everything else on the
+// page (table, map, UK risk table, donut, KPIs) is scoped to that one month only, not a
+// rolling window.
+const TREND_WINDOW_MONTHS = 12
+const MONTH_OPTIONS_COUNT = 24
 
 function bucketObjectType (objectType) {
   const type = (objectType || '').toUpperCase()
@@ -25,15 +27,12 @@ function bucketObjectType (objectType) {
   return 'Debris / Unknown'
 }
 
-// Countries are more useful here than raw coordinates — different users (from different
-// countries, or different FCDO sub-departments) mainly need to know whether their own
-// country should be concerned, not exact degrees. Looked up fully offline via
-// @rapideditor/country-coder: MSH's TIP data has no country field tied to the predicted
-// decay coordinates, and sending OFFICIAL-classified coordinates to a third-party
-// geocoding service isn't an option (see the map's own "no third-party provider"
-// decision). This library's border data favours size and lookup speed over precision,
-// and only loosely covers water, so a prediction well out at sea often resolves to no
-// country at all.
+// Countries are more useful here than raw coordinates, users mainly need to know whether
+// their own country should be concerned, not exact degrees. Looked up offline via
+// @rapideditor/country-coder: MSH's TIP data has no country field, and sending
+// OFFICIAL-classified coordinates to a third-party geocoding service isn't an option.
+// This library favours size and lookup speed over precision and only loosely covers
+// water, so predictions well out at sea often resolve to no country at all.
 function formatLocation (tip) {
   if (!hasResolvedLocation(tip)) {
     return 'Unknown'
@@ -47,46 +46,63 @@ function sortTipsByMostRecent (tips) {
   return [...tips].sort((a, b) => new Date(b.creation_date) - new Date(a.creation_date))
 }
 
-// The API defaults to epoch=future when it's not specified — confirmed live this only
-// covers objects still ahead of their predicted decay (2, right now), while the full
-// tracked population (epoch=all) was 3,696. "Tracked objects" should mean the real
-// breadth of what's being tracked, not just the sliver still pending — epoch=all, most
-// recent first. There's no date-range param on this endpoint, so a big limit is fetched
-// once and the requested reporting period/display cap are both applied client-side in
-// selectAndCap below, rather than by the query itself.
+// The API defaults to epoch=future when unspecified, which only covers objects still
+// ahead of their predicted decay (2, right now) versus the full tracked population,
+// epoch=all (3,696). "Tracked objects" should mean the real breadth of what's tracked,
+// so epoch=all, most recent first. No date-range param exists on this endpoint, so a big
+// limit is fetched once and the reporting period/display cap are applied client-side in
+// selectAndCap below.
 //
-// Confirmed live: this specific call alone takes ~1.6-1.9s with zero contention (it's a
-// ~2.5MB response) — close enough to the client's default 4s abort budget that it's the
-// single most likely call in the app to tip over under concurrent load right after a cold
-// start/deploy. Given a longer timeout here rather than lowering the shared default.
+// This call alone takes ~1.6-1.9s uncontended (~2.5MB response), close enough to the
+// client's default 4s abort budget that it's the most likely call in the app to tip over
+// under concurrent load after a cold start. Given a longer timeout here instead of
+// lowering the shared default.
 const REENTRY_LIST_TIMEOUT_MS = 8000
 
 async function fetchReentryListRaw () {
   return mshRequest('/v1/reentry-events/?epoch=all&sort_by=decay_epoch&sort_order=desc&limit=2000', {}, REENTRY_LIST_TIMEOUT_MS)
 }
 
-// Keeps the raw fetch (above) and the per-caller windowing separate: the tracked-objects
-// table wants "the selected reporting period, capped to a sensible display size", the map
-// wants "however many recent objects it was already showing" — one shared fetch, two
-// different slices, so the underlying MSH call is only ever made once either way (the
-// response cache already dedupes it).
-function selectAndCap (rawEvents, { months, cap }) {
+// Keeps the raw fetch (above) and per-caller windowing separate: the table wants the
+// selected reporting month capped to a display size, the map wants whatever it was
+// already showing. One shared fetch, two different slices (the response cache dedupes
+// the underlying MSH call anyway).
+// A pure recency cap can push every currently risk-flagged (or UK-relevant, see
+// hasKnownRisk) event out of a busy month, since there can be more events in a month
+// than `cap` allows. Those fields sit on the raw record with no extra fetch needed, so
+// every one of those events is always included, uncapped, with only the remaining slots
+// up to `cap` filled by recency. In a busy month this means more than `cap` events can
+// come back, on purpose, rather than silently hiding real risk data. `filtered` stays in
+// its original desc-by-decay_epoch order throughout.
+function selectAndCap (rawEvents, { month, cap }) {
   let filtered = rawEvents
-  if (months) {
-    const cutoff = startOfMonth(shiftMonths(currentMonth(), -(months - 1)))
-    filtered = rawEvents.filter((event) => !event.decay_epoch || new Date(event.decay_epoch) >= cutoff)
+  if (month) {
+    const start = startOfMonth(month)
+    const end = endOfMonth(month)
+    filtered = rawEvents.filter((event) => {
+      if (!event.decay_epoch) return false
+      const decay = new Date(event.decay_epoch)
+      return decay >= start && decay <= end
+    })
   }
+
+  const selectedIds = new Set(filtered.filter(hasKnownRisk).map((event) => event.norad_id))
+  for (const event of filtered) {
+    if (selectedIds.size >= cap) break
+    selectedIds.add(event.norad_id)
+  }
+
+  const events = filtered.filter((event) => selectedIds.has(event.norad_id))
   return {
-    events: filtered.slice(0, cap),
+    events,
     totalInPeriod: filtered.length,
-    truncated: filtered.length > cap
+    truncated: filtered.length > events.length
   }
 }
 
-async function fetchMonthlyTrend (months) {
-  const end = currentMonth()
-  const start = shiftMonths(end, -(months - 1))
-  const url = `/v1/stats/monthly/reentry-events?start_date=${toDateString(startOfMonth(start))}&end_date=${toDateString(endOfMonth(end))}`
+async function fetchMonthlyTrend (months, endMonth) {
+  const start = shiftMonths(endMonth, -(months - 1))
+  const url = `/v1/stats/monthly/reentry-events?start_date=${toDateString(startOfMonth(start))}&end_date=${toDateString(endOfMonth(endMonth))}`
   return mshRequest(url)
 }
 
@@ -95,12 +111,10 @@ async function fetchTipsForNoradId (noradId) {
   return Array.isArray(tips) ? tips : [tips]
 }
 
-// Confirmed by direct testing: reentry-events almost always has estimated_mass, apogee,
-// perigee, inclination, license_country and international_designator as null — but the
-// satellite catalog record for the same norad_id has all of them populated (it's the
-// object's permanent catalog entry, not tied to this specific re-entry assessment).
-// Best-effort: a failure here just means we keep showing "Unknown" for these fields,
-// same as before this fix existed.
+// reentry-events almost always has estimated_mass, apogee, perigee, inclination,
+// license_country and international_designator as null, but the satellite catalog record
+// for the same norad_id has them populated (it's the object's permanent catalog entry).
+// Best-effort: a failure here just means these fields stay "Unknown".
 async function fetchSatelliteCatalog (noradId) {
   return mshRequest(`/v1/satellites/${noradId}`)
 }
@@ -113,15 +127,12 @@ async function tryFetchSatelliteCatalog (noradId) {
   }
 }
 
-// Confirmed by direct testing (scripts/investigate-tips-satellites-batch.js,
-// investigate-tips-latest-and-catalog-size.js): the full satellite catalog is only 834
-// records, and /v1/satellites/with-metadata?limit=1000 returns all of them in ~470ms — one
-// call, not one per norad_id. attachLatestLocation below uses this instead of calling
+// The full satellite catalog is only 834 records, and /v1/satellites/with-metadata?limit=1000
+// returns all of them in one call, ~470ms. attachLatestLocation uses this instead of
 // fetchSatelliteCatalog per-object, which used to mean up to TRACKED_OBJECTS_CAP (60)
-// individual /v1/satellites/{id} calls per page load. (/v1/tips/latest was also checked as
-// a possible bulk replacement for the per-object /v1/tips/{norad_id} call, but it returns
-// only the single most-recently-created TIP system-wide, not one per tracked object — no
-// bulk equivalent exists for that half of the fan-out.)
+// individual calls per page load. /v1/tips/latest was checked as a bulk replacement for
+// the per-object TIP call too, but it only returns the single most recent TIP
+// system-wide, not one per tracked object, so no bulk equivalent exists for that half.
 async function fetchSatelliteCatalogMap () {
   const records = await mshRequest('/v1/satellites/with-metadata?limit=1000')
   const map = new Map()
@@ -146,13 +157,10 @@ function firstDefined (...values) {
   return null
 }
 
-// The list/table page shows the latest predicted location per object as a string; the map
-// page (buildReEntryMapViewModel) needs the raw numbers too, for plotting. Fetching each
-// object's TIP history is best-effort — a failure on one object's TIP lookup shouldn't
-// take down the whole page, it just falls back to "Unknown"/unplottable for that object.
-// catalogMap is the one shared /v1/satellites/with-metadata fetch (see
-// fetchSatelliteCatalogMap above) — a plain lookup here, not a network call. Only ever
-// called for events that came from a live list fetch (see loadEnrichedReentryEvents).
+// The table shows latest predicted location as a string; the map needs the raw numbers
+// too. TIP history fetch is best-effort, a failure on one object falls back to
+// "Unknown"/unplottable rather than taking down the page. catalogMap is a plain lookup
+// against the one shared fetchSatelliteCatalogMap fetch, not a network call.
 async function attachLatestLocation (event, catalogMap) {
   const tips = await fetchTipsForNoradId(event.norad_id).catch(() => [])
   const latestTip = sortTipsByMostRecent(tips)[0]
@@ -163,26 +171,21 @@ async function attachLatestLocation (event, catalogMap) {
     estimated_mass: firstDefined(event.estimated_mass, catalog && catalog.mass),
     location: tips.length ? formatLocation(latestTip) : 'Unknown',
     latitude: latestTip ? latestTip.latitude : null,
-    longitude: latestTip ? normaliseLongitude(latestTip.longitude) : null
+    longitude: latestTip ? normaliseLongitude(latestTip.longitude) : null,
+    historicalRisk: highestRiskOverTime(event, tips)
   }
 }
 
-// Shared by the tracked-objects table (buildReEntryViewModel) and the map
-// (buildReEntryMapViewModel) — one fetch-and-enrich code path, not two. The underlying
-// MSH calls are already deduplicated across both by the response cache. `months`/`cap`
-// are applied to the raw list BEFORE enrichment — each selected object still costs one
-// more live call (TIP history; satellite catalog is now one shared call for the whole
-// batch, see fetchSatelliteCatalogMap above), so filtering first keeps that fan-out
-// bounded regardless of how large the raw fetch or the matching period turns out to be.
-// When the list itself isn't live, there's nothing to enrich — no fixture stand-in, just
-// an empty, status-flagged result.
-// Confirmed live (see cache-warmer.js): firing all of a page's MSH calls at once competes
-// for a shared connection budget, and on a cold cache (right after a deploy/restart) some
-// individual calls can tip over the 4s abort timeout. This page's own fan-out is the
-// worst offender in the app — up to TRACKED_OBJECTS_CAP individual per-object TIP fetches
-// alongside the list and catalog calls — so unlike other sections, capping how many of
-// its OWN calls run at once (rather than relying solely on cache-warmer + self-healing on
-// retry) meaningfully reduces how often a first cold load comes back empty.
+// Shared by the table (buildReEntryViewModel) and the map (buildReEntryMapViewModel), one
+// fetch-and-enrich path, not two. `months`/`cap` are applied BEFORE enrichment since each
+// selected object still costs one live TIP history call, so filtering first bounds that
+// fan-out. When the list itself isn't live, there's nothing to enrich, just an empty,
+// status-flagged result.
+//
+// This page's fan-out (up to TRACKED_OBJECTS_CAP per-object TIP fetches alongside list
+// and catalog calls) is the worst offender in the app for tipping over the 4s abort
+// timeout on a cold cache. Capping how many of its own calls run at once meaningfully
+// reduces how often a first cold load comes back empty (see cache-warmer.js).
 const TIP_FETCH_CONCURRENCY = 10
 
 async function mapWithConcurrencyLimit (items, limit, fn) {
@@ -198,44 +201,43 @@ async function mapWithConcurrencyLimit (items, limit, fn) {
   return results
 }
 
-async function loadEnrichedReentryEvents ({ months, cap } = {}) {
+async function loadEnrichedReentryEvents ({ month, cap } = {}) {
   const listResult = await getSectionData('re-entry', { liveFetcher: fetchReentryListRaw })
 
   if (listResult.status !== STATUS.LIVE) {
     return { status: listResult.status, events: [], totalInPeriod: 0, truncated: false }
   }
 
-  const { events: selectedEvents, totalInPeriod, truncated } = selectAndCap(listResult.data, { months, cap })
+  const { events: selectedEvents, totalInPeriod, truncated } = selectAndCap(listResult.data, { month, cap })
   const catalogMap = await tryFetchSatelliteCatalogMap()
   const events = await mapWithConcurrencyLimit(selectedEvents, TIP_FETCH_CONCURRENCY, (event) => attachLatestLocation(event, catalogMap))
   return { status: STATUS.LIVE, events, totalInPeriod, truncated }
 }
 
-// A "sleek, scrollable" tab panel rather than a page-length table needs a sensible
-// display cap — each object enriched here still costs one more live call (TIP history),
-// so this also bounds that fan-out. Raised from the old flat "30 most recent"
-// limit since the table now spans the selected reporting period, not just the last
-// couple of weeks; objectsTruncated/objectsTotalInPeriod below tell the page (and this
-// isn't hidden) when the period holds more than fit on screen.
+// A scrollable panel rather than a page-length table needs a display cap, and each object
+// enriched here costs one more live TIP call, so this bounds that fan-out too.
+// objectsTruncated/objectsTotalInPeriod tell the page when the selected month holds more
+// than fits on screen.
 const TRACKED_OBJECTS_CAP = 60
 
-async function buildReEntryViewModel (requestedMonths) {
-  const months = resolveTrendPeriod(requestedMonths)
+async function buildReEntryViewModel (requestedMonth) {
+  const selectedMonth = parseMonthParam(requestedMonth) || currentMonth()
 
   const [listResult, trendResult] = await Promise.all([
-    loadEnrichedReentryEvents({ months, cap: TRACKED_OBJECTS_CAP }),
-    getSectionData('re-entry', { liveFetcher: () => fetchMonthlyTrend(months) })
+    loadEnrichedReentryEvents({ month: selectedMonth, cap: TRACKED_OBJECTS_CAP }),
+    getSectionData('re-entry', { liveFetcher: () => fetchMonthlyTrend(TREND_WINDOW_MONTHS, selectedMonth) })
   ])
 
   const status = worstStatus(listResult.status, trendResult.status)
   const { events: enrichedEvents, totalInPeriod, truncated } = listResult
   const trendRows = trendResult.status === STATUS.LIVE ? trendResult.data : []
 
-  // The KPI tiles above the trend strip summarise the SAME selected period, rather than
-  // a separately-scoped "lifetime" stats call — otherwise the tiles and the strip below
-  // them could show inconsistent, confusing numbers for what looks like one figure.
-  const periodTotalCount = trendRows.reduce((sum, row) => sum + row.count, 0)
-  const periodAlertCount = trendRows.reduce((sum, row) => sum + row.alert_count, 0)
+  // KPI tiles reflect the selected month specifically, not the whole 12-month trend
+  // window behind the graph, so they can't show a bigger number than what the table below
+  // is actually scoped to.
+  const selectedMonthRow = trendRows.find((row) => row.month === monthKey(selectedMonth)) || null
+  const periodTotalCount = selectedMonthRow ? selectedMonthRow.count : 0
+  const periodAlertCount = selectedMonthRow ? selectedMonthRow.alert_count : 0
 
   const now = new Date()
   const rows = enrichedEvents.map((event) => ({
@@ -243,10 +245,14 @@ async function buildReEntryViewModel (requestedMonths) {
     objectName: event.object_name,
     mass: event.estimated_mass ? `${event.estimated_mass} kg` : 'Unknown',
     date: formatDate(event.decay_epoch),
-    risk: highestRisk(event.atmospheric_risk, event.human_casualty_risk, event.fragments_risk),
+    risk: event.historicalRisk,
     location: event.location,
     noradId: event.norad_id,
-    isUpcoming: Boolean(event.decay_epoch) && new Date(event.decay_epoch) > now
+    isUpcoming: Boolean(event.decay_epoch) && new Date(event.decay_epoch) > now,
+    // Predicted final landing in the UK/a UK Overseas Territory, OR MSH's own
+    // uk_reentry_probability ("Risk to the UK" in MSH's own executive summary), an
+    // overflight-based figure independent of where the object actually lands.
+    isUkInterest: event.location === 'United Kingdom' || isRealRiskValue(event.uk_reentry_probability)
   }))
 
   const objectTypeCounts = rows.reduce((acc, row) => {
@@ -254,25 +260,25 @@ async function buildReEntryViewModel (requestedMonths) {
     return acc
   }, {})
 
-  // Risk assessment happens close to or after the decay date (see explainer), so an
-  // "upcoming" object with a risk rating already assigned would be unusual — excluded
-  // here so "Objects Analysed for Risk" only counts already-decayed objects.
+  // Risk assessment happens close to or after the decay date, so an "upcoming" object
+  // with a risk rating would be unusual. Excluded so "Objects Analysed for Risk" only
+  // counts already-decayed objects.
   const analysedRows = rows.filter((row) => !row.isUpcoming && row.risk !== null)
 
-  // Matches NSpOC's own "Risks to UK Interests and/or Overflights of UK or UK Overseas
-  // Territories" table. country-coder resolves every UK Overseas Territory to "United
-  // Kingdom" already (see formatLocation above), so this one check covers both — but it's
-  // predicted FINAL RE-ENTRY LOCATION only. MSH has no orbital ground-track/overflight
-  // data, so a genuine "passed over the UK without re-entering there" risk isn't something
-  // this table (or MSH) can capture, only the "location" half of NSpOC's own title.
-  const ukRiskRows = rows.filter((row) => row.location === 'United Kingdom')
+  // Matches NSpOC's "Risks to UK Interests and/or Overflights of UK or UK Overseas
+  // Territories" table.
+  const ukRiskRows = rows.filter((row) => row.isUkInterest)
 
-  // Latest month first — the current/most recent period is what you want to see
-  // immediately, not after scrolling right past everything older.
+  // Latest month first, the current period is what you want to see immediately.
   const trend = trendRows.slice().reverse().map((row) => ({
     month: formatMonth(row.month),
     count: row.count,
     alertCount: row.alert_count
+  }))
+
+  const monthOptions = listRecentMonths(MONTH_OPTIONS_COUNT).map((month) => ({
+    value: monthKey(month),
+    text: monthLabel(month) + (monthKey(month) === monthKey(currentMonth()) ? ' (current)' : '')
   }))
 
   return {
@@ -281,14 +287,12 @@ async function buildReEntryViewModel (requestedMonths) {
     periodAlertCount,
     trend,
     trendChart: buildLineChart(trend),
-    trendMonths: months,
-    trendPeriods: ALLOWED_TREND_PERIODS,
-    // Real month names, not just "N months" — a bare count reads as arbitrary. Matches
-    // Collision & Fragmentation's specific-month wording rather than an abstract window.
-    periodStartLabel: monthLabel(shiftMonths(currentMonth(), -(months - 1))),
-    periodEndLabel: monthLabel(currentMonth()),
+    trendWindowMonths: TREND_WINDOW_MONTHS,
+    selectedMonth: monthKey(selectedMonth),
+    selectedMonthLabel: monthLabel(selectedMonth),
+    monthOptions,
     ukRiskRows,
-    objectsCap: TRACKED_OBJECTS_CAP,
+    objectsCap: rows.length,
     objectsTotalInPeriod: totalInPeriod,
     objectsTruncated: truncated,
     analysedCount: analysedRows.length,
@@ -302,13 +306,11 @@ async function fetchReentryByNoradId (noradId) {
   return mshRequest(`/v1/reentry-events/by-norad-id/${noradId}`)
 }
 
-// Two distinct "no event" outcomes now that fixture fallback no longer masks the
-// difference: the live call can fail with a 404 (MSH itself says this norad ID doesn't
-// exist — a real 404 on this page too), or it can fail some other way, e.g. a timeout or
-// 5xx (MSH is unreachable right now for what may be a perfectly real object — a "data
-// unavailable" page, not a 404). Confirmed live: MSH's by-norad-id lookup itself returns
-// an HTTP error for an unknown ID rather than a 200 with an empty body, so the distinction
-// has to be made from the caught error's status, not from a falsy response body.
+// Two distinct "no event" outcomes: the live call can 404 (MSH says this norad ID doesn't
+// exist, a real 404 here too), or fail some other way, e.g. timeout or 5xx (MSH is
+// unreachable for what may be a real object, a "data unavailable" page, not a 404).
+// MSH's by-norad-id lookup returns an HTTP error for an unknown ID rather than a 200 with
+// an empty body, so the distinction comes from the caught error's status.
 async function buildReEntryObjectViewModel (noradId) {
   const [detailResult, tipsResult, catalog] = await Promise.all([
     getSectionData('re-entry', { liveFetcher: () => fetchReentryByNoradId(noradId) }),
@@ -332,8 +334,8 @@ async function buildReEntryObjectViewModel (noradId) {
   const sortedTips = sortTipsByMostRecent(tips)
   const latestTip = sortedTips[0] || null
 
-  // reentry-events almost never carries these catalog fields itself (see fetchSatelliteCatalog
-  // above) — fall back to the object's satellite catalog record, which does.
+  // reentry-events almost never carries these catalog fields itself, fall back to the
+  // object's satellite catalog record, which does.
   const mass = firstDefined(event.estimated_mass, catalog && catalog.mass)
   const apogee = firstDefined(event.apogee, catalog && catalog.apogee)
   const perigee = firstDefined(event.perigee, catalog && catalog.perigee)
@@ -353,7 +355,7 @@ async function buildReEntryObjectViewModel (noradId) {
     perigee: perigee ? `${perigee} km` : 'Unknown',
     inclination: inclination !== null && inclination !== undefined ? `${inclination}°` : 'Unknown',
     decayEpoch: formatDateTime(event.decay_epoch),
-    risk: highestRisk(event.atmospheric_risk, event.human_casualty_risk, event.fragments_risk),
+    risk: highestRiskOverTime(event, tips),
     predictedLocation: formatLocation(latestTip),
     reentryHistory: sortedTips.map((tip) => ({
       reportedAt: formatDateTime(tip.creation_date),
@@ -365,9 +367,8 @@ async function buildReEntryObjectViewModel (noradId) {
   }
 }
 
-// Shared by the dedicated Re-Entry Map page (buildReEntryMapViewModel, uncapped by
-// reporting period) and the smaller map embedded on the Re-Entry page itself
-// (buildReEntryViewModel, scoped to whatever period is currently selected there) — one
+// Shared by the dedicated Re-Entry Map page (uncapped by reporting period) and the
+// smaller map embedded on the Re-Entry page (scoped to the selected period), one
 // marker-building path, not two.
 function buildMapData (events) {
   const plottable = events.filter((event) => hasResolvedLocation(event))
@@ -376,16 +377,16 @@ function buildMapData (events) {
     noradId: event.norad_id,
     objectName: event.object_name,
     objectType: bucketObjectType(event.object_type),
-    risk: highestRisk(event.atmospheric_risk, event.human_casualty_risk, event.fragments_risk),
+    risk: event.historicalRisk,
     decayDate: formatDate(event.decay_epoch),
     location: event.location,
     latitude: event.latitude,
     longitude: normaliseLongitude(event.longitude)
   }))
 
-  // Pre-serialised here (not via a template `dump` filter) and with "<" escaped, so an
-  // object name containing "</script>" from the live API can't break out of the <script>
-  // data island this gets embedded in.
+  // Pre-serialised here (not via a template `dump` filter) with "<" escaped, so an object
+  // name containing "</script>" from the live API can't break out of the script tag
+  // this is embedded in.
   const mapboxData = JSON.stringify({ accessToken: mapboxConfig.accessToken, markers }).replace(/</g, '\\u003c')
 
   return {
@@ -399,9 +400,9 @@ function buildMapData (events) {
 }
 
 async function buildReEntryMapViewModel () {
-  // Unchanged from this map's original behaviour — no period filter, just the 30 most
-  // recent by decay date — the period selector above only scopes the table, not this map.
-  const { status, events } = await loadEnrichedReentryEvents({ months: null, cap: 30 })
+  // No month filter, just the 30 most recent by decay date. The month selector on the
+  // Re-Entry page only scopes that page's own table/map, not this one.
+  const { status, events } = await loadEnrichedReentryEvents({ month: null, cap: 30 })
   return { status, ...buildMapData(events) }
 }
 
