@@ -6,12 +6,31 @@
 {% from "macros/re-entry-map.njk" import reEntryMap %}
 {% from "macros/badge.njk" import mshBadge %}
 
+{% block stylesheets %}
+  {{ super() }}
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
   {{ presentControls(nav) }}
   <div class="msh-present-slide">
     {{ mshBadge(viewModel.status) }}
     <h1 class="msh-present-slide__title">Re-Entry Map</h1>
-    <p class="msh-present-slide__subtitle">{{ viewModel.plottedCount }} of {{ viewModel.totalCount }} tracked objects plotted</p>
+    <p class="msh-present-slide__subtitle">
+      {{ viewModel.plottedCount }} of {{ viewModel.totalCount }} tracked objects plotted
+      {% if viewModel.unresolvedCount > 0 %}({{ viewModel.unresolvedCount }} have no resolved location yet){% endif %}
+    </p>
     {{ reEntryMap(viewModel) }}
+    <p class="msh-present-slide__legend govuk-body-s">
+      <span class="msh-map__marker msh-map__marker--low"></span> Low
+      <span class="msh-map__marker msh-map__marker--medium"></span> Medium
+      <span class="msh-map__marker msh-map__marker--high"></span> High
+      <span class="msh-map__marker msh-map__marker--pending"></span> Pending analyst review
+    </p>
   </div>
+{% endblock %}
+
+{% block pageScripts %}
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js"></script>
+  <script src="/public/javascripts/re-entry-map.js"></script>
 {% endblock %}

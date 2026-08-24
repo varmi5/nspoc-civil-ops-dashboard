@@ -21,8 +21,7 @@ function buildBarChart (entries) {
       height: Math.round(barHeight * 100) / 100,
       label: entry.month,
       value: entry.count,
-      alertCount: entry.alertCount,
-      analysisCount: entry.analysisCount
+      alertCount: entry.alertCount
     }
   })
 

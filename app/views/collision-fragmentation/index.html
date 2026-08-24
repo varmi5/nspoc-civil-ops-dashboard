@@ -4,95 +4,52 @@
 {% set pageName = "Collision & Fragmentation" %}
 
 {% from "macros/badge.njk" import mshBadge %}
-{% from "macros/kpi-tile.njk" import kpiTile %}
 {% from "macros/donut-chart.njk" import donutChart %}
 {% from "macros/risk-tag.njk" import riskTag %}
 {% from "macros/print-link.njk" import printLink %}
 {% from "macros/present-link.njk" import presentLink %}
-{% from "macros/trend-view.njk" import trendView %}
+{% from "macros/line-chart.njk" import lineChart %}
+{% from "macros/month-selector.njk" import monthSelector %}
 {% from "macros/period-selector.njk" import periodSelector %}
 {% from "macros/explainer.njk" import explainer %}
-{% from "govuk/components/inset-text/macro.njk" import govukInsetText %}
 
 {% block content %}
 
 {{ mshBadge(viewModel.status) }}
 <h1 class="govuk-heading-xl">Collision &amp; Fragmentation</h1>
 
-<div class="msh-kpi-grid">
-  {{ kpiTile({ label: "Conjunction Events Tracked (current snapshot)", value: viewModel.collisionCount, status: viewModel.collisionStatus }) }}
-  {{ kpiTile({ label: "Requires Analysis (probability > " + viewModel.analysisThreshold + ")", value: viewModel.requiresAnalysisCount, status: viewModel.requiresAnalysisStatus }) }}
-  {{ kpiTile({ label: "Reported to UK Government", value: viewModel.reportedCount, status: viewModel.collisionStatus }) }}
-  {{ kpiTile({ label: "Fragmentation Incidents Tracked", value: viewModel.fragmentationCount, status: viewModel.fragmentationStatus }) }}
-</div>
+<p class="govuk-body">Reporting month: <strong>{{ viewModel.selectedMonthLabel }}</strong>. This picks the month for the two charts and two donuts below — it does not affect the fragmentation incidents table further down, which has its own separate lookback selector.</p>
+{{ monthSelector("/collision-fragmentation", viewModel.selectedMonth, viewModel.monthOptions, { fragmentationMonths: viewModel.fragmentationLookbackMonths }) }}
 
-{{ explainer("What do \"conjunction\" and \"fragmentation\" mean?", "
+{{ explainer("What do \"conjunction\" and \"fragmentation\" mean, and what does the chart below actually show?", "
   <p class='govuk-body'>Two terms come up a lot on this page:</p>
   <ul class='govuk-list govuk-list--bullet'>
     <li><strong>Conjunction:</strong> two tracked objects passing close together in orbit. It's what we call a collision risk before it's assessed. MSH tracks these as <code>conjunction-events</code>.</li>
     <li><strong>Fragmentation:</strong> a breakup incident, where an object splits into new trackable debris. MSH tracks these as <code>fragmentation-events</code>.</li>
   </ul>
-  <p class='govuk-body'>Most conjunctions are wide misses with no computed probability attached. The list below sorts them by NSpOC's own \"interest\" rating (Low, Medium, High) instead. The \"Requires Analysis\" table further down is different: it uses a dedicated MSH endpoint that only surfaces events past a probability threshold, so each row has a real computed collision probability.</p>
-  <p class='govuk-body'><a class='govuk-link' href='/data-sources'>See the exact endpoint behind every figure on this page</a>.</p>
+  <p class='govuk-body'>NSpOC's own report has a single \"Collision Risks to UK Satellites\" figure (1,285 in its May 2026 report), and a separate \"Alerts Issued\" line. We don't show an equivalent to the first number on this page: MSH's raw monthly screening count runs around 50,000-60,000 — every conjunction MSH's software flagged that month, the overwhelming majority wide misses with no real risk — so far from NSpOC's figure that showing it, even caveated, read as simply wrong. It's been dropped entirely. The chart below shows the closest available proxy for \"Alerts Issued\" instead: screenings that crossed the analysis probability threshold (> " + viewModel.analysisThreshold + ") that month — MSH has no literal \"alert\" concept for conjunctions, so this is a proxy, not NSpOC's own alert figure. See <a class='govuk-link govuk-link--no-visited-state' href='/data-sources'>Data sources</a> for the full investigation.</p>
 ") }}
 
-<h2 class="govuk-heading-l">Conjunction events tracked</h2>
-{{ govukInsetText({
-  html: "<p class='govuk-body'>Almost all of these are low-probability screenings. See \"Events requiring analysis\" further down for the small subset that's actually significant.</p><p class='govuk-body'>These monthly totals run higher than NSpOC's own reported figures. We checked MSH's full API spec: there's no endpoint or filter that produces the narrower, analyst-reviewed figure NSpOC reports. MSH doesn't expose this today, and there's no way to query around it. We've raised it with the MSH/NSpOC team; see <a class='govuk-link' href='/data-sources'>Data sources</a> for the full investigation.</p>"
-}) }}
-{{ periodSelector("/collision-fragmentation", viewModel.trendMonths, viewModel.trendPeriods, "months", "month") }}
-<p class="govuk-body-s msh-month-strip__scroll-hint">Latest month first — scroll right for earlier months →</p>
-{{ trendView("conjunction-trend", "Conjunction events tracked", viewModel.trend, viewModel.trendChart) }}
+<h2 class="govuk-heading-l">Conjunction alerts issued (12 months to {{ viewModel.selectedMonthLabel }})</h2>
+<p class="govuk-body">Screenings crossing the probability > {{ viewModel.analysisThreshold }} threshold each month — a proxy for NSpOC's own "Alerts Issued" figure, not the figure itself. See the explainer above.</p>
+{{ lineChart("Conjunction alerts issued", viewModel.trendChart, "Alerts Issued (> " + viewModel.analysisThreshold + ")") }}
 
-<h2 class="govuk-heading-l">Fragmentation incidents tracked</h2>
-{{ trendView("fragmentation-trend", "Fragmentation incidents tracked", viewModel.fragmentationTrend, viewModel.fragmentationTrendChart) }}
+<h2 class="govuk-heading-l">Fragmentation incidents tracked (12 months to {{ viewModel.selectedMonthLabel }})</h2>
+{{ lineChart("Fragmentation incidents tracked", viewModel.fragmentationTrendChart, "Fragmentation Incidents") }}
 
-<h2 class="govuk-heading-l">Data analysis</h2>
+<h2 class="govuk-heading-l">Data analysis ({{ viewModel.selectedMonthLabel }})</h2>
 <div class="msh-donut-grid">
   <div class="msh-donut-chart-card">
-    {{ donutChart("Source of Risk (by interest rating)", viewModel.riskDonut, viewModel.riskDonutStatus) }}
+    {{ donutChart("Conjunction Probability Breakdown", viewModel.riskDonut, viewModel.riskDonutStatus) }}
   </div>
   <div class="msh-donut-chart-card">
     {{ donutChart("Fragmentation Cause", viewModel.fragTypeDonut, viewModel.fragTypeDonutStatus) }}
   </div>
 </div>
 
-<h2 class="govuk-heading-l">Events requiring analysis</h2>
-<p class="govuk-body">Conjunction events with a computed collision probability above {{ viewModel.analysisThreshold }} — the small minority of tracked events that actually warrant an analyst's attention, out of {{ viewModel.collisionCount }} tracked overall.</p>
-<table class="govuk-table">
-  <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Conjunction events requiring analysis</caption>
-  <thead class="govuk-table__head">
-    <tr class="govuk-table__row">
-      <th scope="col" class="govuk-table__header">Primary Object</th>
-      <th scope="col" class="govuk-table__header">Secondary Object</th>
-      <th scope="col" class="govuk-table__header">Closest Approach</th>
-      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Miss Distance</th>
-      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Collision Probability</th>
-      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Primary Mass</th>
-      <th scope="col" class="govuk-table__header govuk-table__header--numeric">Secondary Mass</th>
-    </tr>
-  </thead>
-  <tbody class="govuk-table__body">
-    {% if viewModel.analysisRows | length == 0 %}
-      <tr class="govuk-table__row">
-        <td class="govuk-table__cell" colspan="7">No events currently exceed the analysis threshold.</td>
-      </tr>
-    {% endif %}
-    {% for row in viewModel.analysisRows %}
-      <tr class="govuk-table__row">
-        <td class="govuk-table__cell">{{ row.primaryObject }}</td>
-        <td class="govuk-table__cell">{{ row.secondaryObject }}</td>
-        <td class="govuk-table__cell">{{ row.closestApproach }}</td>
-        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.missDistance }}</td>
-        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.collisionProbability }}</td>
-        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.primaryMass }}</td>
-        <td class="govuk-table__cell govuk-table__cell--numeric">{{ row.secondaryMass }}</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
-
 <h2 class="govuk-heading-l">Recent fragmentation incidents</h2>
+{{ periodSelector("/collision-fragmentation", viewModel.fragmentationLookbackMonths, viewModel.fragmentationLookbackPeriods, "fragmentationMonths", "month", { month: viewModel.selectedMonth }) }}
+<p class="govuk-body">Showing {{ viewModel.fragmentationTotalInLookback }} incident{{ "s" if viewModel.fragmentationTotalInLookback != 1 }} in the last {{ viewModel.fragmentationLookbackMonths }} month{{ "s" if viewModel.fragmentationLookbackMonths != 1 }} (from today, independent of the reporting month above).</p>
 <table class="govuk-table">
   <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Recent fragmentation incidents</caption>
   <thead class="govuk-table__head">
@@ -106,6 +63,11 @@
     </tr>
   </thead>
   <tbody class="govuk-table__body">
+    {% if viewModel.fragmentationRows | length == 0 %}
+      <tr class="govuk-table__row">
+        <td class="govuk-table__cell" colspan="6">No fragmentation incidents in this period.</td>
+      </tr>
+    {% endif %}
     {% for row in viewModel.fragmentationRows %}
       <tr class="govuk-table__row">
         <td class="govuk-table__cell">{{ row.primaryObject }}</td>

@@ -21,7 +21,7 @@ function formatMonth (yyyyMm) {
   if (!yyyyMm) return 'Unknown'
   const [year, month] = yyyyMm.split('-')
   const date = new Date(Number(year), Number(month) - 1, 1)
-  return `${date.toLocaleString('en-GB', { month: 'short' })}-${year.slice(-2)}`
+  return `${date.toLocaleString('en-GB', { month: 'short' })} ${year.slice(-2)}`
 }
 
 module.exports = { formatDate, formatDateTime, formatMonth }

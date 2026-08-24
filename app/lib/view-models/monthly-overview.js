@@ -132,11 +132,11 @@ async function buildMonthTile ({ key, sectionKey, label, href, fetchRows, valueF
 // — one call shared between both collision tiles, not two. No month-over-month delta:
 // this is a lifetime total, not a date-ranged figure, so a delta would be meaningless —
 // shown as none rather than a fabricated comparison.
-function buildConjunctionStatsTile ({ key, label, href, valueField, statsResult }) {
+function buildConjunctionStatsTile ({ key, label, href, valueField, statsResult, caveat }) {
   if (statsResult.status !== STATUS.LIVE) {
     return { key, label, value: null, previousValue: null, delta: null, href, status: statsResult.status }
   }
-  return { key, label, value: statsResult.data[valueField], previousValue: null, delta: null, href, status: STATUS.LIVE }
+  return { key, label, value: statsResult.data[valueField], previousValue: null, delta: null, href, status: STATUS.LIVE, caveat }
 }
 
 // Mirrors buildConjunctionStatsTile above, but the live value here is already a plain
@@ -212,12 +212,19 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     getSectionData('collision-fragmentation', { liveFetcher: () => fetchConjunctionMonthlyTotal(selectedMonth) })
   ])
 
+  // Renamed from "Collision Risks to UK Satellites" — that label borrowed NSpOC's own
+  // reported metric name for a figure that isn't it: this endpoint has no confirmed
+  // UK-satellite filter (see narrative.js's collisionSentence for the same finding), and
+  // it's a live whole-catalogue snapshot, not scoped to a month. NSpOC's May 2026 report
+  // shows 1,285 for this metric; this endpoint returns ~14,000+ for the same period — a
+  // different figure, not a wrong one, so the tile now says what it actually measures.
   const collisionRiskTile = buildConjunctionStatsTile({
     key: 'collision-risk',
-    label: 'Collision Risks to UK Satellites (current snapshot)',
+    label: 'Conjunction Events Tracked (current catalogue)',
     href: '/collision-fragmentation',
     valueField: 'conjunction_event_total_count',
-    statsResult: conjunctionStatsResult
+    statsResult: conjunctionStatsResult,
+    caveat: "Not filtered to UK satellites and not scoped to this month — NSpOC's own reported figure isn't available via any MSH endpoint found so far. See Data sources."
   })
 
   const collisionAlertTile = buildConjunctionStatsTile({
@@ -225,7 +232,8 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     label: 'Collision Alerts from NSpOC (current snapshot)',
     href: '/collision-fragmentation',
     valueField: 'conjunction_event_alert_count',
-    statsResult: conjunctionStatsResult
+    statsResult: conjunctionStatsResult,
+    caveat: 'Not confirmed to be filtered to UK satellites — see Data sources.'
   })
 
   // The small subset that's actually crossed a probability threshold and needs a human

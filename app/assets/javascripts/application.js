@@ -102,6 +102,11 @@ function initFastNav () {
         window.GOVUKFrontend.initAll({ scope: main })
       }
       enhance(main)
+      // Anything set up once at initial page load (not part of the shared enhance()
+      // pipeline above — e.g. re-entry-map.js booting Mapbox into a specific container)
+      // needs its own signal that swapped-in markup just replaced whatever it was
+      // attached to, since this swap doesn't re-run page <script> tags.
+      document.dispatchEvent(new CustomEvent('msh:content-swapped', { detail: { root: main } }))
       if (status) status.textContent = 'Page updated.'
       return true
     } catch (err) {
@@ -130,96 +135,6 @@ function initFastNav () {
   window.addEventListener('popstate', () => {
     swapTo(window.location.href, false)
   })
-}
-
-// Pan/zoom for the Re-Entry map (app/views/macros/re-entry-map.njk) — no library, just a
-// CSS transform on the <g data-msh-map-zoom-group> element. The on-screen +/-/reset
-// buttons are the keyboard-operable path (native <button>s, already Tab/Enter-accessible);
-// wheel-to-zoom and drag-to-pan are mouse/touch conveniences on top of that, not the only
-// way to use the map.
-function initReEntryMapControls () {
-  const map = document.querySelector('[data-msh-map]')
-  if (!map) return
-
-  const svg = map.querySelector('.msh-map__svg')
-  const zoomGroup = map.querySelector('[data-msh-map-zoom-group]')
-  const zoomInButton = map.querySelector('[data-msh-map-zoom-in]')
-  const zoomOutButton = map.querySelector('[data-msh-map-zoom-out]')
-  const resetButton = map.querySelector('[data-msh-map-reset]')
-  if (!svg || !zoomGroup) return
-
-  const MIN_SCALE = 1
-  const MAX_SCALE = 6
-  let scale = 1
-  let translateX = 0
-  let translateY = 0
-
-  function clampTranslate () {
-    const maxX = (360 * (scale - 1)) / 2 + 180
-    const maxY = (180 * (scale - 1)) / 2 + 90
-    translateX = Math.max(-maxX, Math.min(maxX, translateX))
-    translateY = Math.max(-maxY, Math.min(maxY, translateY))
-  }
-
-  function apply () {
-    clampTranslate()
-    zoomGroup.style.transformOrigin = '180px 90px'
-    zoomGroup.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`
-  }
-
-  function zoomBy (factor) {
-    scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor))
-    apply()
-  }
-
-  function reset () {
-    scale = 1
-    translateX = 0
-    translateY = 0
-    apply()
-  }
-
-  svg.addEventListener('wheel', (event) => {
-    event.preventDefault()
-    zoomBy(event.deltaY < 0 ? 1.2 : 1 / 1.2)
-  }, { passive: false })
-
-  let isDragging = false
-  let lastX = 0
-  let lastY = 0
-
-  svg.addEventListener('pointerdown', (event) => {
-    // Don't capture the pointer when starting on a marker — doing so retargets the
-    // resulting click to the <svg> itself and silently swallows the marker's navigation.
-    if (event.target.closest('a.msh-map__marker')) return
-    isDragging = true
-    lastX = event.clientX
-    lastY = event.clientY
-    svg.setPointerCapture(event.pointerId)
-  })
-
-  svg.addEventListener('pointermove', (event) => {
-    if (!isDragging) return
-    const dx = event.clientX - lastX
-    const dy = event.clientY - lastY
-    lastX = event.clientX
-    lastY = event.clientY
-    const rect = svg.getBoundingClientRect()
-    translateX += dx * (360 / rect.width)
-    translateY += dy * (180 / rect.height)
-    apply()
-  })
-
-  const endDrag = (event) => {
-    isDragging = false
-    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId)
-  }
-  svg.addEventListener('pointerup', endDrag)
-  svg.addEventListener('pointercancel', endDrag)
-
-  if (zoomInButton) zoomInButton.addEventListener('click', () => zoomBy(1.4))
-  if (zoomOutButton) zoomOutButton.addEventListener('click', () => zoomBy(1 / 1.4))
-  if (resetButton) resetButton.addEventListener('click', reset)
 }
 
 // Presentation Mode: ArrowLeft/ArrowRight follow the prev/next slide links (which are
@@ -255,6 +170,5 @@ function initPresentMode () {
 window.GOVUKPrototypeKit.documentReady(() => {
   enhance(document)
   initFastNav()
-  initReEntryMapControls()
   initPresentMode()
 })

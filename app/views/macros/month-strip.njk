@@ -1,12 +1,9 @@
 {#
 Renders a monthly trend as a horizontally-scrolling strip of compact cards (scan left to
 right across months) instead of a tall vertical table you have to scroll down through.
-`months` is an array of { month, count, alertCount?, analysisCount? }, at most one of
-which is set per series. alertCount is Re-Entry's real MSH-reported monthly figure.
-analysisCount is Collision & Fragmentation's month-bucketed "events past the analysis
-threshold" count, a dashboard-computed approximation rather than an MSH-reported figure
-(see tech-docs "Open questions") — shown as "needing analysis" rather than "alerts" so
-it's not mistaken for the same kind of number. Fragmentation's trend has neither.
+`months` is an array of { month, count, alertCount? } — alertCount is optional; the sub-line
+is only shown when it's actually provided (Re-Entry's trend has one, Collision &
+Fragmentation's plain event-count trend doesn't).
 #}
 {% macro monthStrip(months) %}
   <div class="msh-month-strip">
@@ -16,8 +13,6 @@ it's not mistaken for the same kind of number. Fragmentation's trend has neither
         <span class="msh-month-strip__value">{{ month.count }}</span>
         {% if month.alertCount is defined %}
           <span class="msh-month-strip__sub">{{ month.alertCount }} alert{{ "s" if month.alertCount != 1 }}</span>
-        {% elif month.analysisCount is defined %}
-          <span class="msh-month-strip__sub">{{ month.analysisCount }} needing analysis</span>
         {% endif %}
       </div>
     {% endfor %}

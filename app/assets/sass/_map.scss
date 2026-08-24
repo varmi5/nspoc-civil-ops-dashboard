@@ -2,70 +2,51 @@
   margin-bottom: govuk-spacing(6);
 }
 
-.msh-map__controls {
-  display: flex;
-  gap: govuk-spacing(2);
-  margin-bottom: govuk-spacing(2);
-}
-
-.msh-map__viewport {
-  overflow: hidden;
+.msh-map__mapbox {
+  height: 500px;
   border: 1px solid govuk-functional-colour(border);
 }
 
-.msh-map__svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  cursor: grab;
-  touch-action: none; // pan/zoom is handled ourselves, not the browser's default gestures
+// The map embedded inline on the Re-Entry page itself — shorter than the dedicated Re-Entry
+// Map page's version, since it sits alongside a table and charts rather than being the
+// whole page.
+.msh-map__mapbox--embedded {
+  height: 350px;
+}
 
-  &:active {
-    cursor: grabbing;
+// Mapbox markers are plain buttons (not the map's own SVG), positioned by Mapbox itself —
+// only their appearance is styled here. The same class is reused on plain <span>s for the
+// static risk-colour legend (see present/re-entry-map.html), hence display/vertical-align.
+.msh-map__marker {
+  display: inline-block;
+  vertical-align: middle;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid govuk-colour("white");
+  padding: 0;
+  cursor: pointer;
+
+  &--low {
+    background-color: govuk-colour("green");
   }
-}
 
-.msh-map__zoom-group {
-  transition: transform 0.1s ease-out;
-}
+  &--medium {
+    background-color: govuk-colour("yellow");
+  }
 
-.msh-map__ocean {
-  fill: govuk-colour("black", $variant: "tint-95");
-}
+  &--high,
+  &--critical {
+    background-color: govuk-colour("red");
+  }
 
-.msh-map__graticule-line {
-  stroke: govuk-colour("black", $variant: "tint-80");
-  stroke-width: 0.3;
-}
+  &--pending {
+    background-color: govuk-colour("black", $variant: "tint-25");
+  }
 
-.msh-map__graticule-line--emphasis {
-  stroke: govuk-colour("black", $variant: "tint-50");
-  stroke-width: 0.5;
-}
-
-.msh-map__marker circle {
-  stroke: govuk-colour("white");
-  stroke-width: 0.3;
-}
-
-.msh-map__marker--low circle {
-  fill: govuk-colour("green");
-}
-
-.msh-map__marker--medium circle {
-  fill: govuk-colour("yellow");
-}
-
-.msh-map__marker--high circle,
-.msh-map__marker--critical circle {
-  fill: govuk-colour("red");
-}
-
-.msh-map__marker--pending circle {
-  fill: govuk-colour("black", $variant: "tint-25");
-}
-
-.msh-map__marker:hover circle,
-.msh-map__marker:focus circle {
-  r: 3;
+  &:hover,
+  &:focus {
+    width: 18px;
+    height: 18px;
+  }
 }

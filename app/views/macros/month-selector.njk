@@ -4,10 +4,16 @@
 {#
 A GET form with a native <select> of recent months. The "View" button always works (no
 JS required); application.js progressively enhances the select to auto-submit on change,
-so JS users rarely need to click it.
+so JS users rarely need to click it. `extraQuery` (optional) is an object of other query
+params to preserve as hidden fields — needed on any page with a second, independent
+selector alongside this one (e.g. Collision & Fragmentation's fragmentation-incidents
+lookback), so picking a month doesn't silently reset the other control back to default.
 #}
-{% macro monthSelector(basePath, currentValue, options) %}
+{% macro monthSelector(basePath, currentValue, options, extraQuery) %}
   <form method="get" action="{{ basePath }}" class="msh-month-selector">
+    {% for name, value in extraQuery %}
+      <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
     {{ govukSelect({
       id: "month",
       name: "month",

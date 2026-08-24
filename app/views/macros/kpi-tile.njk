@@ -12,9 +12,10 @@ Renders one KPI tile. `params`:
               in orbit is neutral/expected growth).
   href        (string, optional) — wraps the tile in a link when present
   status      ("live"|"unavailable"|"not-connected", optional) — when passed, renders
-              the badge inside the tile, and when not "live", shows an explanatory
-              message in place of `value`/`delta` rather than a number that could be
-              mistaken for real data.
+              the badge inside the tile, and when not "live", shows "N/A" in place of
+              `value`/`delta` rather than a number that could be mistaken for real data.
+              The badge below is the one place that explains why — the value itself
+              doesn't repeat that explanation, so it isn't shown twice on the same tile.
   caveat      (string, optional) — a short, always-visible warning shown under the
               value even when status is "live", for a figure that's real but knowingly
               a different metric to what it might be compared against (e.g. the
@@ -31,10 +32,8 @@ Renders one KPI tile. `params`:
   {% else %}
     <div class="msh-kpi-tile">
   {% endif %}
-      {% if params.status == "unavailable" %}
-        <span class="msh-kpi-tile__value msh-kpi-tile__value--empty">No data available</span>
-      {% elif params.status == "not-connected" %}
-        <span class="msh-kpi-tile__value msh-kpi-tile__value--empty">No live data source connected</span>
+      {% if params.status == "unavailable" or params.status == "not-connected" %}
+        <span class="msh-kpi-tile__value msh-kpi-tile__value--empty">N/A</span>
       {% else %}
         <span class="msh-kpi-tile__value">{{ params.value }}{% if params.unit %} {{ params.unit }}{% endif %}</span>
       {% endif %}

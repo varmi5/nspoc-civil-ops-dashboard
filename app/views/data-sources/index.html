@@ -12,7 +12,7 @@
 
 {% for page in viewModel.pages %}
   <h2 class="govuk-heading-l">
-    {% if page.href %}<a class="govuk-link" href="{{ page.href }}">{{ page.title }}</a>{% else %}{{ page.title }}{% endif %}
+    {% if page.href %}<a class="govuk-link govuk-link--no-visited-state" href="{{ page.href }}">{{ page.title }}</a>{% else %}{{ page.title }}{% endif %}
   </h2>
   <div class="msh-scroll-panel">
   <table class="govuk-table">

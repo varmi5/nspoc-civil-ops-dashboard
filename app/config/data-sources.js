@@ -33,10 +33,10 @@ module.exports = [
   },
   {
     page: 'Monthly Overview', pageHref: '/monthly-overview',
-    figure: 'Collision Risks to UK Satellites / Collision Alerts from NSpOC (current snapshot)',
+    figure: 'Conjunction Events Tracked / Collision Alerts from NSpOC (current snapshot)',
     sectionKey: 'collision-fragmentation', gate: 'msh',
     endpoints: ['/v1/conjunction-events/stats?epoch=future'],
-    description: 'A snapshot of the current tracked catalogue, not scoped to the selected month — this endpoint has no date-range parameter at all, which is why the figure never changes when you pick a different month.'
+    description: 'A snapshot of the current tracked catalogue, not scoped to the selected month — this endpoint has no date-range parameter at all, which is why the figure never changes when you pick a different month. Not filtered to UK-licensed satellites either, so it is not the same metric as NSpOC\'s own reported "Collision Risks to UK Satellites" figure.'
   },
   {
     page: 'Monthly Overview', pageHref: '/monthly-overview',
@@ -124,45 +124,31 @@ module.exports = [
   },
   {
     page: 'Collision & Fragmentation', pageHref: '/collision-fragmentation',
-    figure: 'Conjunction events tracked (count, donut)',
+    figure: '"Recent fragmentation incidents" table',
     sectionKey: 'collision-fragmentation', gate: 'msh',
-    endpoints: ['/v1/conjunction-events/?limit=100&sort_by=tca_time&sort_order=desc'],
-    description: 'The 100 most recent tracked conjunction events.'
+    endpoints: ['/v1/fragmentation-events/?epoch=all&limit=200&sort_by=event_epoch&sort_order=desc'],
+    description: 'Up to 200 most recent tracked fragmentation incidents, filtered here (client-side — MSH has no date-range filter on this endpoint) to the selected "last N months" lookback.'
   },
   {
     page: 'Collision & Fragmentation', pageHref: '/collision-fragmentation',
-    figure: 'Events requiring analysis',
-    sectionKey: 'collision-fragmentation', gate: 'msh',
-    endpoints: ['/v1/conjunction-events/for-analysis?threshold=0.001'],
-    description: 'Events past a computed collision-probability threshold, with full physical details per object.'
-  },
-  {
-    page: 'Collision & Fragmentation', pageHref: '/collision-fragmentation',
-    figure: 'Fragmentation incidents tracked',
-    sectionKey: 'collision-fragmentation', gate: 'msh',
-    endpoints: ['/v1/fragmentation-events/?epoch=all&limit=100&sort_by=event_epoch&sort_order=desc'],
-    description: 'The 100 most recent tracked fragmentation incidents.'
-  },
-  {
-    page: 'Collision & Fragmentation', pageHref: '/collision-fragmentation',
-    figure: 'Conjunction events trend',
+    figure: '"Conjunction alerts issued" chart and "Conjunction Probability Breakdown" donut',
     sectionKey: 'collision-fragmentation', gate: 'msh',
     endpoints: ['/v1/stats/monthly/conjunction-events-aggregated'],
-    description: 'Every MSH screening recorded per month. Confirmed live: not the same metric as NSpOC’s own reported monthly figure — see the caveat on this chart.'
+    description: 'Every MSH screening recorded per month, broken down by probability band (< 1e-5, 1e-3 to 1e-5, > 1e-3). The chart plots only the > 1e-3 band, as a proxy for NSpOC\'s own "Alerts Issued" figure — the raw monthly total was dropped entirely, since it runs ~50,000-60,000 against NSpOC\'s own reported ~1,285, too far off to show even caveated.'
   },
   {
     page: 'Collision & Fragmentation', pageHref: '/collision-fragmentation',
-    figure: 'Fragmentation incidents trend',
+    figure: '"Fragmentation incidents tracked" chart',
     sectionKey: 'collision-fragmentation', gate: 'msh',
     endpoints: ['/v1/stats/monthly/fragmentation-events'],
     description: 'Month-scoped fragmentation incident counts.'
   },
   {
     page: 'Collision & Fragmentation', pageHref: '/collision-fragmentation',
-    figure: 'Fragmentation Cause donut',
+    figure: '"Fragmentation Cause" donut',
     sectionKey: 'collision-fragmentation', gate: 'msh',
-    endpoints: ['/v1/stats/fragmentation-events/by-fragmentation-type'],
-    description: 'Fragmentation incidents broken down by cause.'
+    endpoints: ['/v1/fragmentation-events/?epoch=all&limit=200&sort_by=event_epoch&sort_order=desc'],
+    description: 'The same fetch as the incidents table above, bucketed by cause and filtered to the selected reporting month specifically (a different scope from the table’s own "last N months" lookback).'
   },
   {
     page: 'Space Weather', pageHref: '/space-weather',

@@ -6,14 +6,14 @@ ArrowLeft/ArrowRight keyboard shortcuts.
 #}
 {% macro presentControls(nav) %}
   <div class="msh-present-controls govuk-!-display-none-print">
-    <a class="govuk-link msh-present-controls__exit" href="{{ nav.current.exitHref }}">Exit presentation</a>
+    <a class="govuk-link govuk-link--no-visited-state msh-present-controls__exit" href="{{ nav.current.exitHref }}">Exit presentation</a>
     <span class="msh-present-controls__counter">Slide {{ nav.index + 1 }} of {{ nav.total }}</span>
     <nav class="msh-present-controls__nav" aria-label="Presentation slides">
       {% if nav.prevHref %}
-        <a rel="prev" href="{{ nav.prevHref }}" class="govuk-link msh-present-controls__link">← Previous</a>
+        <a rel="prev" href="{{ nav.prevHref }}" class="govuk-link govuk-link--no-visited-state msh-present-controls__link">← Previous</a>
       {% endif %}
       {% if nav.nextHref %}
-        <a rel="next" href="{{ nav.nextHref }}" class="govuk-link msh-present-controls__link">Next →</a>
+        <a rel="next" href="{{ nav.nextHref }}" class="govuk-link govuk-link--no-visited-state msh-present-controls__link">Next →</a>
       {% endif %}
     </nav>
     <button type="button" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0 js-present-fullscreen">Full screen</button>

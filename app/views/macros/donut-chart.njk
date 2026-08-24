@@ -3,15 +3,18 @@ Renders the object returned by app/lib/charts/donut.js as an accessible SVG donu
 legend list. The legend is the real text alternative (screen readers and print both rely
 on it) — colour is decoration, never the only way to read a value.
 
-`status` ("live"|"unavailable"|"not-connected", optional) — when the chart has no
-segments, picks the right empty-state message instead of one generic line, so a
-permanently-unconnected figure isn't worded the same as a temporary live failure.
+`status` ("live"|"unavailable"|"not-connected", optional) — when there's no live source
+or the fetch failed, shows "N/A" rather than an empty circle. A badge elsewhere on the
+page (or right above this chart, on Monthly Overview) is the one place that explains why
+— this doesn't repeat that explanation, so it isn't shown twice. When the source is live
+but the chart itself just has no segments for the period, that's genuinely the only place
+saying so, so it keeps its own descriptive message.
 #}
 {% macro donutChart(title, chart, status) %}
   <div class="msh-donut-chart">
     <figure class="msh-donut-chart__figure">
       {% if chart.total > 0 %}
-        <svg width="120" height="120" viewBox="0 0 36 36" role="img" aria-label="{{ title }} — see the list below for exact values">
+        <svg width="120" height="120" viewBox="0 0 36 36" role="img" aria-label="{{ title }}. See the list below for exact values">
           <circle cx="18" cy="18" r="{{ chart.radius }}" fill="none" stroke-width="3.8" class="msh-donut-chart__track"></circle>
           {% for segment in chart.segments %}
             <circle
@@ -23,10 +26,8 @@ permanently-unconnected figure isn't worded the same as a temporary live failure
             ></circle>
           {% endfor %}
         </svg>
-      {% elif status == "not-connected" %}
-        <p class="msh-donut-chart__empty">No live data source connected</p>
-      {% elif status == "unavailable" %}
-        <p class="msh-donut-chart__empty">No data available</p>
+      {% elif status == "not-connected" or status == "unavailable" %}
+        <p class="msh-donut-chart__empty">N/A</p>
       {% else %}
         <p class="msh-donut-chart__empty">No data available this reporting period</p>
       {% endif %}

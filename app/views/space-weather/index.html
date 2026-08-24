@@ -18,7 +18,7 @@
 {{ explainer("Where does this come from, and how are the sector ratings decided?", "
   <p class='govuk-body'>Alerts are sourced live from NOAA's Space Weather Prediction Center: radio blackout, geomagnetic, electron flux, proton flux and geomagnetic sudden impulse alerts. These are the same alert families as NSpOC's existing MOSWOC-sourced log.</p>
   <p class='govuk-body'><strong>The colour shown per sector is a first draft, not yet signed off by NSpOC.</strong> It's derived from NOAA's own published potential-impact descriptions per scale level, not NSpOC's real methodology. Treat every rating on this page as provisional until it's validated against real historical reports.</p>
-  <p class='govuk-body'><a class='govuk-link' href='/data-sources'>See the exact endpoint behind this page</a>.</p>
+  <p class='govuk-body'><a class='govuk-link govuk-link--no-visited-state' href='/data-sources'>See the exact endpoint behind this page</a>.</p>
 ") }}
 
 {{ monthSelector("/space-weather", viewModel.monthKeyValue, viewModel.monthOptions) }}

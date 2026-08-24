@@ -80,7 +80,7 @@ router.get('/re-entry/:noradId', async (req, res, next) => {
 
 router.get('/collision-fragmentation', async (req, res, next) => {
   try {
-    const viewModel = await buildCollisionFragmentationViewModel(req.query.months)
+    const viewModel = await buildCollisionFragmentationViewModel(req.query.month, req.query.fragmentationMonths)
     res.render('collision-fragmentation/index', { viewModel })
   } catch (err) {
     next(err)
@@ -148,7 +148,7 @@ router.get('/present/re-entry/map', async (req, res, next) => {
 
 router.get('/present/collision-fragmentation', async (req, res, next) => {
   try {
-    const viewModel = await buildCollisionFragmentationViewModel(req.query.months)
+    const viewModel = await buildCollisionFragmentationViewModel(req.query.month, req.query.fragmentationMonths)
     res.render('present/collision-fragmentation', { viewModel, nav: presentNav('collision-fragmentation') })
   } catch (err) {
     next(err)

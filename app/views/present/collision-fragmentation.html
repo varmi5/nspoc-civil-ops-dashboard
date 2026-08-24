@@ -3,8 +3,8 @@
 {% set pageName = "Present — Collision & Fragmentation" %}
 
 {% from "macros/present-controls.njk" import presentControls %}
-{% from "macros/kpi-tile.njk" import kpiTile %}
 {% from "macros/donut-chart.njk" import donutChart %}
+{% from "macros/line-chart.njk" import lineChart %}
 {% from "macros/badge.njk" import mshBadge %}
 
 {% block content %}
@@ -12,19 +12,15 @@
   <div class="msh-present-slide">
     {{ mshBadge(viewModel.status) }}
     <h1 class="msh-present-slide__title">Collision &amp; Fragmentation</h1>
-
-    <div class="msh-kpi-grid msh-present-slide__kpi-grid">
-      {{ kpiTile({ label: "Conjunction Events Tracked", value: viewModel.collisionCount, status: viewModel.collisionStatus }) }}
-      {{ kpiTile({ label: "Requires Analysis", value: viewModel.requiresAnalysisCount, status: viewModel.requiresAnalysisStatus }) }}
-      {{ kpiTile({ label: "Reported to UK Government", value: viewModel.reportedCount, status: viewModel.collisionStatus }) }}
-      {{ kpiTile({ label: "Fragmentation Incidents", value: viewModel.fragmentationCount, status: viewModel.fragmentationStatus }) }}
-    </div>
+    <p class="msh-present-slide__subtitle">Reporting month: {{ viewModel.selectedMonthLabel }}</p>
 
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-one-half">
-        {{ donutChart("Source of Risk", viewModel.riskDonut, viewModel.riskDonutStatus) }}
+        {{ lineChart("Conjunction alerts issued", viewModel.trendChart, "Alerts Issued (> " + viewModel.analysisThreshold + ")") }}
+        {{ donutChart("Conjunction Probability Breakdown", viewModel.riskDonut, viewModel.riskDonutStatus) }}
       </div>
       <div class="govuk-grid-column-one-half">
+        {{ lineChart("Fragmentation incidents tracked", viewModel.fragmentationTrendChart, "Fragmentation Incidents") }}
         {{ donutChart("Fragmentation Cause", viewModel.fragTypeDonut, viewModel.fragTypeDonutStatus) }}
       </div>
     </div>

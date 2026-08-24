@@ -1,14 +1,14 @@
 const { getSectionData } = require('../msh/get-section-data')
 const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
-const { buildBarChart } = require('../charts/bar-chart')
+const { buildLineChart } = require('../charts/line-chart')
 const { STATUS, worstStatus } = require('../msh/status')
 const { highestRisk } = require('../format-risk')
 const { formatDate, formatDateTime, formatMonth } = require('../format-date')
-const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths } = require('../date-range')
+const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths, monthLabel } = require('../date-range')
 const { normaliseLongitude, hasResolvedLocation } = require('../geo')
 const { feature: countryFeature } = require('@rapideditor/country-coder')
-const { projectPoint, buildGraticule } = require('../charts/world-projection')
+const mapboxConfig = require('../mapbox/config')
 
 const ALLOWED_TREND_PERIODS = [1, 3, 6, 12, 24]
 const DEFAULT_TREND_PERIOD = 12
@@ -52,11 +52,17 @@ function sortTipsByMostRecent (tips) {
 // tracked population (epoch=all) was 3,696. "Tracked objects" should mean the real
 // breadth of what's being tracked, not just the sliver still pending — epoch=all, most
 // recent first. There's no date-range param on this endpoint, so a big limit is fetched
-// once (confirmed live: even the full 3,696-record archive back to 2004 returns in ~2s)
-// and the requested reporting period/display cap are both applied client-side in
+// once and the requested reporting period/display cap are both applied client-side in
 // selectAndCap below, rather than by the query itself.
+//
+// Confirmed live: this specific call alone takes ~1.6-1.9s with zero contention (it's a
+// ~2.5MB response) — close enough to the client's default 4s abort budget that it's the
+// single most likely call in the app to tip over under concurrent load right after a cold
+// start/deploy. Given a longer timeout here rather than lowering the shared default.
+const REENTRY_LIST_TIMEOUT_MS = 8000
+
 async function fetchReentryListRaw () {
-  return mshRequest('/v1/reentry-events/?epoch=all&sort_by=decay_epoch&sort_order=desc&limit=2000')
+  return mshRequest('/v1/reentry-events/?epoch=all&sort_by=decay_epoch&sort_order=desc&limit=2000', {}, REENTRY_LIST_TIMEOUT_MS)
 }
 
 // Keeps the raw fetch (above) and the per-caller windowing separate: the tracked-objects
@@ -170,6 +176,28 @@ async function attachLatestLocation (event, catalogMap) {
 // bounded regardless of how large the raw fetch or the matching period turns out to be.
 // When the list itself isn't live, there's nothing to enrich — no fixture stand-in, just
 // an empty, status-flagged result.
+// Confirmed live (see cache-warmer.js): firing all of a page's MSH calls at once competes
+// for a shared connection budget, and on a cold cache (right after a deploy/restart) some
+// individual calls can tip over the 4s abort timeout. This page's own fan-out is the
+// worst offender in the app — up to TRACKED_OBJECTS_CAP individual per-object TIP fetches
+// alongside the list and catalog calls — so unlike other sections, capping how many of
+// its OWN calls run at once (rather than relying solely on cache-warmer + self-healing on
+// retry) meaningfully reduces how often a first cold load comes back empty.
+const TIP_FETCH_CONCURRENCY = 10
+
+async function mapWithConcurrencyLimit (items, limit, fn) {
+  const results = new Array(items.length)
+  let nextIndex = 0
+  async function worker () {
+    while (nextIndex < items.length) {
+      const index = nextIndex++
+      results[index] = await fn(items[index], index)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
+}
+
 async function loadEnrichedReentryEvents ({ months, cap } = {}) {
   const listResult = await getSectionData('re-entry', { liveFetcher: fetchReentryListRaw })
 
@@ -179,7 +207,7 @@ async function loadEnrichedReentryEvents ({ months, cap } = {}) {
 
   const { events: selectedEvents, totalInPeriod, truncated } = selectAndCap(listResult.data, { months, cap })
   const catalogMap = await tryFetchSatelliteCatalogMap()
-  const events = await Promise.all(selectedEvents.map((event) => attachLatestLocation(event, catalogMap)))
+  const events = await mapWithConcurrencyLimit(selectedEvents, TIP_FETCH_CONCURRENCY, (event) => attachLatestLocation(event, catalogMap))
   return { status: STATUS.LIVE, events, totalInPeriod, truncated }
 }
 
@@ -226,16 +254,18 @@ async function buildReEntryViewModel (requestedMonths) {
     return acc
   }, {})
 
-  // Three tabs instead of one long table: still ahead of their predicted decay
-  // ("Upcoming"), already decayed but not yet risk-assessed ("Pending Analysis" — this is
-  // the normal state most objects sit in, per the explainer text below), or already
-  // decayed and analysed. Risk assessment happens close to or after the decay date (see
-  // explainer), so "upcoming" objects with a risk rating already assigned would be
-  // unusual — in practice this split is almost always the same as future/past.
-  const decayedRows = rows.filter((row) => !row.isUpcoming)
-  const upcomingRows = rows.filter((row) => row.isUpcoming)
-  const analysedRows = decayedRows.filter((row) => row.risk !== null)
-  const pendingAnalysisRows = decayedRows.filter((row) => row.risk === null)
+  // Risk assessment happens close to or after the decay date (see explainer), so an
+  // "upcoming" object with a risk rating already assigned would be unusual — excluded
+  // here so "Objects Analysed for Risk" only counts already-decayed objects.
+  const analysedRows = rows.filter((row) => !row.isUpcoming && row.risk !== null)
+
+  // Matches NSpOC's own "Risks to UK Interests and/or Overflights of UK or UK Overseas
+  // Territories" table. country-coder resolves every UK Overseas Territory to "United
+  // Kingdom" already (see formatLocation above), so this one check covers both — but it's
+  // predicted FINAL RE-ENTRY LOCATION only. MSH has no orbital ground-track/overflight
+  // data, so a genuine "passed over the UK without re-entering there" risk isn't something
+  // this table (or MSH) can capture, only the "location" half of NSpOC's own title.
+  const ukRiskRows = rows.filter((row) => row.location === 'United Kingdom')
 
   // Latest month first — the current/most recent period is what you want to see
   // immediately, not after scrolling right past everything older.
@@ -250,21 +280,21 @@ async function buildReEntryViewModel (requestedMonths) {
     periodTotalCount,
     periodAlertCount,
     trend,
-    trendChart: buildBarChart(trend),
+    trendChart: buildLineChart(trend),
     trendMonths: months,
     trendPeriods: ALLOWED_TREND_PERIODS,
-    rows,
-    tabs: {
-      upcoming: upcomingRows,
-      pendingAnalysis: pendingAnalysisRows,
-      analysed: analysedRows
-    },
+    // Real month names, not just "N months" — a bare count reads as arbitrary. Matches
+    // Collision & Fragmentation's specific-month wording rather than an abstract window.
+    periodStartLabel: monthLabel(shiftMonths(currentMonth(), -(months - 1))),
+    periodEndLabel: monthLabel(currentMonth()),
+    ukRiskRows,
     objectsCap: TRACKED_OBJECTS_CAP,
     objectsTotalInPeriod: totalInPeriod,
     objectsTruncated: truncated,
     analysedCount: analysedRows.length,
     totalCount: rows.length,
-    objectTypeDonut: buildDonut(Object.entries(objectTypeCounts).map(([label, value]) => ({ label, value })))
+    objectTypeDonut: buildDonut(Object.entries(objectTypeCounts).map(([label, value]) => ({ label, value }))),
+    mapData: buildMapData(enrichedEvents)
   }
 }
 
@@ -335,35 +365,44 @@ async function buildReEntryObjectViewModel (noradId) {
   }
 }
 
-async function buildReEntryMapViewModel () {
-  // Unchanged from this map's original behaviour — no period filter, just the 30 most
-  // recent by decay date — the period selector above only scopes the table, not the map.
-  const { status, events } = await loadEnrichedReentryEvents({ months: null, cap: 30 })
-
+// Shared by the dedicated Re-Entry Map page (buildReEntryMapViewModel, uncapped by
+// reporting period) and the smaller map embedded on the Re-Entry page itself
+// (buildReEntryViewModel, scoped to whatever period is currently selected there) — one
+// marker-building path, not two.
+function buildMapData (events) {
   const plottable = events.filter((event) => hasResolvedLocation(event))
 
-  const markers = plottable.map((event) => {
-    const { x, y } = projectPoint(event.latitude, event.longitude)
-    return {
-      noradId: event.norad_id,
-      objectName: event.object_name,
-      objectType: bucketObjectType(event.object_type),
-      risk: highestRisk(event.atmospheric_risk, event.human_casualty_risk, event.fragments_risk),
-      decayDate: formatDate(event.decay_epoch),
-      location: event.location,
-      x,
-      y
-    }
-  })
+  const markers = plottable.map((event) => ({
+    noradId: event.norad_id,
+    objectName: event.object_name,
+    objectType: bucketObjectType(event.object_type),
+    risk: highestRisk(event.atmospheric_risk, event.human_casualty_risk, event.fragments_risk),
+    decayDate: formatDate(event.decay_epoch),
+    location: event.location,
+    latitude: event.latitude,
+    longitude: normaliseLongitude(event.longitude)
+  }))
+
+  // Pre-serialised here (not via a template `dump` filter) and with "<" escaped, so an
+  // object name containing "</script>" from the live API can't break out of the <script>
+  // data island this gets embedded in.
+  const mapboxData = JSON.stringify({ accessToken: mapboxConfig.accessToken, markers }).replace(/</g, '\\u003c')
 
   return {
-    status,
     markers,
     plottedCount: markers.length,
     totalCount: events.length,
     unresolvedCount: events.length - markers.length,
-    graticule: buildGraticule()
+    mapboxAccessToken: mapboxConfig.accessToken,
+    mapboxData
   }
+}
+
+async function buildReEntryMapViewModel () {
+  // Unchanged from this map's original behaviour — no period filter, just the 30 most
+  // recent by decay date — the period selector above only scopes the table, not this map.
+  const { status, events } = await loadEnrichedReentryEvents({ months: null, cap: 30 })
+  return { status, ...buildMapData(events) }
 }
 
 module.exports = { buildReEntryViewModel, buildReEntryObjectViewModel, buildReEntryMapViewModel }

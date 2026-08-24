@@ -1,0 +1,58 @@
+{#
+Renders the object returned by app/lib/charts/line-chart.js: one or two lines sharing a
+chart but NOT a scale — each line is independently scaled to its own max (see line-chart.js
+for why: sharing one scale flattens a much-smaller series to a flat line at the bottom).
+Each point carries a native <title> tooltip, same accessibility pattern as bar-chart.njk —
+colour is never the only way to read a value, the legend and the labels underneath name
+each line and give its exact figures. `countLabel`/`alertLabel` default to re-entry's own
+wording; pass different labels for a page where "alerts" isn't the right word (e.g.
+Collision & Fragmentation's second line is a probability-threshold count, not an alert).
+`alertShortLabel` (defaults to "alerts") is what's repeated under every single point in the
+compact label strip below the chart — keep this to one or two words, since `alertLabel`
+itself is meant for the legend/tooltip and is too long to repeat 12 times in a row.
+`chart.alertLine` is null when there's no second series at all (e.g. fragmentation, which
+MSH has no alerts-equivalent figure for) — that line/legend/label is skipped entirely
+rather than drawing a fake flat line.
+#}
+{% macro lineChart(title, chart, countLabel, alertLabel, alertShortLabel) %}
+  {% set countLabel = countLabel or "Number of Re-Entries" %}
+  {% set alertLabel = alertLabel or "Alerts Issued" %}
+  {% set alertShortLabel = alertShortLabel or "alerts" %}
+  <div class="msh-line-chart">
+    <div class="msh-line-chart__legend">
+      <span class="msh-line-chart__legend-item msh-line-chart__legend-item--count">{{ countLabel }}</span>
+      {% if chart.alertLine %}
+        <span class="msh-line-chart__legend-item msh-line-chart__legend-item--alerts">{{ alertLabel }}</span>
+      {% endif %}
+    </div>
+    <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" preserveAspectRatio="none" class="msh-line-chart__svg" role="img" aria-label="{{ title }}. See the labels below for exact values">
+      <path d="{{ chart.countLine.path }}" class="msh-line-chart__line msh-line-chart__line--count"></path>
+      {% if chart.alertLine %}
+        <path d="{{ chart.alertLine.path }}" class="msh-line-chart__line msh-line-chart__line--alerts"></path>
+      {% endif %}
+      {% for point in chart.countLine.points %}
+        <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3" class="msh-line-chart__point msh-line-chart__point--count">
+          <title>{{ point.label }}: {{ point.value }} ({{ countLabel }})</title>
+        </circle>
+      {% endfor %}
+      {% if chart.alertLine %}
+        {% for point in chart.alertLine.points %}
+          <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3" class="msh-line-chart__point msh-line-chart__point--alerts">
+            <title>{{ point.label }}: {{ point.value }} ({{ alertLabel }})</title>
+          </circle>
+        {% endfor %}
+      {% endif %}
+    </svg>
+    <div class="msh-line-chart__labels">
+      {% for point in chart.countLine.points %}
+        <div class="msh-line-chart__label-item">
+          <span class="msh-line-chart__label-month">{{ point.label }}</span>
+          <span class="msh-line-chart__label-value">{{ point.value }}</span>
+          {% if chart.alertLine %}
+            <span class="msh-line-chart__label-sub">{{ chart.alertLine.points[loop.index0].value }} {{ alertShortLabel }}</span>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endmacro %}

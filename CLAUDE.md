@@ -358,6 +358,39 @@ without new information from them. Surfaced directly in the UI: an inline caveat
 a collapsed explainer, since that's how this went unnoticed before), plus a full writeup on
 the `/data-sources` page and in both pages' explainer text.
 
+**PROMISING NEW LEAD (2026-08-12), not yet wired in — needs an MSH/NSpOC answer first.**
+Prompted by an orbital analyst pointing at MSH's own website, "Performance monitoring and
+statistics" page, "NSpOC conjunction event analysis and manoeuvre support" section: this
+shows monthly "Analyses Received" / "Manoeuvre Support Plots Received" counts (source:
+UKSA) that are a genuinely different, much smaller metric than the raw screening total —
+roughly 1,500-8,000/month, not 30,000-65,000/month. Confirmed this is a real, separate,
+fast live endpoint, not something scraped off the page:
+`/v1/stats/monthly/analyses` and `/v1/stats/monthly/analyses-aggregated` (201ms for a
+6-month range) — both undocumented in this file until now because the earlier
+"Known open issue" investigation only regex-searched for query *parameters* resembling
+"reviewed"/"analyst", not separate top-level endpoints. Live-tested values matched the
+website's own table almost exactly (e.g. May 2026: API `5313` vs website `5331`). Each
+underlying `/v1/analyses/` record carries an `event_short_id` and `is_active` flag, and is
+uploaded by real analysts (`uploaded_by_email: orbitalanalysts@ukspaceagency.gov.uk` in a
+sample record) — this is genuine analyst output, not automated screening.
+
+**Still short of confirming this equals NSpOC's ~1,300/month reported figure — do not wire
+it in as a drop-in fix without closing this gap.** Tried to test the obvious theory (one
+event gets multiple analyses over time as its risk estimate is reassessed, same pattern as
+CDM revisions — dedupe by `event_short_id`/`is_active` might land near 1,300) and hit a
+real blocker: `/v1/analyses/` has **no date-range filter at all** (only `sort_by`/
+`sort_order`/`limit`/`offset` — confirmed via `/openapi.json`), and paginating it directly
+(sorted by `created_at` ascending) turned up 210,000+ rows without reaching May 2026 by
+`created_at`, even though 13 months of the monthly stat's own numbers sum to only ~62,600.
+That mismatch means `/v1/stats/monthly/analyses` is NOT simply counting `/v1/analyses/`
+rows by `created_at` — something else (a different date field, or additional filtering)
+drives its monthly bucketing, and guessing further at that mechanism isn't safe to do
+blind. **Next step: ask the MSH/NSpOC team directly whether "Analyses Received" is what
+their reported monthly figure counts, and if so, at what dedup level** — don't spend more
+engineering time reverse-engineering the bucketing logic from this side first. See
+`scripts/investigate-monthly-analyses-endpoint.js` and
+`scripts/investigate-analyses-full-dedup.js` for the exact tests run.
+
 ## Working conventions for this repo
 
 - **Test live, don't guess.** Every claim about API behaviour in this file was verified

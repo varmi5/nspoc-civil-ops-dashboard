@@ -9,7 +9,7 @@ from app/lib/narrative.js (deterministic, template-built — no LLM involved).
       <p class="govuk-body">{{ sentence }}</p>
     {% endfor %}
     {% if href %}
-      <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ href }}">Read the full summary</a></p>
+      <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link govuk-link--no-visited-state" href="{{ href }}">Read the full summary</a></p>
     {% endif %}
   </div>
 {% endmacro %}

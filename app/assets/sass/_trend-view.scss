@@ -75,6 +75,100 @@
   color: govuk-colour("black", $variant: "tint-25");
 }
 
+.msh-line-chart {
+  margin-bottom: govuk-spacing(6);
+}
+
+.msh-line-chart__legend {
+  display: flex;
+  gap: govuk-spacing(4);
+  margin-bottom: govuk-spacing(2);
+}
+
+.msh-line-chart__legend-item {
+  @include govuk-font($size: 16);
+  position: relative;
+  padding-left: govuk-spacing(4);
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  &--count::before {
+    background-color: $msh-brand-blue;
+  }
+
+  &--alerts::before {
+    background-color: $msh-brand-red;
+  }
+}
+
+.msh-line-chart__svg {
+  width: 100%;
+  height: 260px;
+  display: block;
+}
+
+.msh-line-chart__line {
+  fill: none;
+  stroke-width: 2;
+}
+
+.msh-line-chart__line--count {
+  stroke: $msh-brand-blue;
+}
+
+.msh-line-chart__line--alerts {
+  stroke: $msh-brand-red;
+}
+
+.msh-line-chart__point--count {
+  fill: $msh-brand-blue;
+}
+
+.msh-line-chart__point--alerts {
+  fill: $msh-brand-red;
+}
+
+.msh-line-chart__labels {
+  display: flex;
+  gap: govuk-spacing(2);
+  overflow-x: auto;
+  padding-top: govuk-spacing(2);
+  scroll-snap-type: x proximity;
+}
+
+.msh-line-chart__label-item {
+  flex: 0 0 auto;
+  min-width: 80px;
+  text-align: center;
+  scroll-snap-align: start;
+}
+
+.msh-line-chart__label-month {
+  display: block;
+  @include govuk-font($size: 16, $weight: bold);
+}
+
+.msh-line-chart__label-value {
+  display: block;
+  @include govuk-font($size: 16);
+  color: govuk-colour("black", $variant: "tint-25");
+}
+
+.msh-line-chart__label-sub {
+  display: block;
+  @include govuk-font($size: 16);
+  color: govuk-colour("black", $variant: "tint-25");
+}
+
 @media print {
   // The cards view already unwraps to show everything on paper — no need for a second,
   // interactive graph view in a static export.

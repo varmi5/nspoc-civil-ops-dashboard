@@ -1,47 +1,59 @@
 const { getSectionData } = require('../msh/get-section-data')
 const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
-const { buildBarChart } = require('../charts/bar-chart')
+const { buildLineChart } = require('../charts/line-chart')
 const { STATUS, worstStatus } = require('../msh/status')
 const { formatDateTime, formatMonth } = require('../format-date')
-const { toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths, monthKey, listRecentMonths } = require('../date-range')
-const { ANALYSIS_THRESHOLD, fetchEventsForAnalysis } = require('../msh/conjunction-analysis')
+const {
+  toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths,
+  monthKey, monthLabel, parseMonthParam, listRecentMonths
+} = require('../date-range')
+const { ANALYSIS_THRESHOLD } = require('../msh/conjunction-analysis')
 
-const ALLOWED_TREND_PERIODS = [1, 3, 6, 12, 24]
-const DEFAULT_TREND_PERIOD = 12
+// The trend charts always show a fixed 12-month window ending at the selected reporting
+// month — matching NSpOC's own chart, which shows a year of history regardless of which
+// single month the donuts below are reporting on. This isn't a user-choosable "look back
+// N months" control (that's the separate fragmentation-incidents table selector below) —
+// it's fixed so the chart's shape stays predictable.
+const TREND_WINDOW_MONTHS = 12
+const MONTH_OPTIONS_COUNT = 24
 
-function resolveTrendPeriod (requestedMonths) {
-  const parsed = Number(requestedMonths)
-  return ALLOWED_TREND_PERIODS.includes(parsed) ? parsed : DEFAULT_TREND_PERIOD
+const ALLOWED_FRAGMENTATION_LOOKBACK = [1, 3, 6, 12, 24]
+const DEFAULT_FRAGMENTATION_LOOKBACK = 12
+
+function resolveFragmentationLookback (requested) {
+  const parsed = Number(requested)
+  return ALLOWED_FRAGMENTATION_LOOKBACK.includes(parsed) ? parsed : DEFAULT_FRAGMENTATION_LOOKBACK
 }
 
-// Individual conjunction events carry a "user_interest" field (Low/Medium/High), unlike
-// the separate monthly-aggregate endpoint, which is instead broken down by a numeric
-// collision_probability_range — different shape, same underlying idea. Bucketing
-// per-event by user_interest is what's actually available on each list row.
-function bucketByInterest (event) {
-  return event.user_interest || 'Unknown'
+// epoch=all + a generous limit, same pattern as re-entry's fetchReentryListRaw — real
+// fragmentation incidents are rare (single digits a year), so unlike conjunction events
+// (tens of thousands a month) this list is small enough to filter by month client-side
+// rather than needing a date-range endpoint MSH doesn't provide.
+async function fetchFragmentationListRaw () {
+  return mshRequest('/v1/fragmentation-events/?epoch=all&limit=200&sort_by=event_epoch&sort_order=desc')
 }
 
-async function fetchConjunctionList () {
-  return mshRequest('/v1/conjunction-events/?limit=100&sort_by=tca_time&sort_order=desc')
+async function fetchConjunctionMonthlyAggregated (months, endMonth) {
+  const start = shiftMonths(endMonth, -(months - 1))
+  return mshRequest(`/v1/stats/monthly/conjunction-events-aggregated?start_date=${toDateString(startOfMonth(start))}&end_date=${toDateString(endOfMonth(endMonth))}`)
 }
 
-async function fetchFragmentationList () {
-  return mshRequest('/v1/fragmentation-events/?epoch=all&limit=100&sort_by=event_epoch&sort_order=desc')
+async function fetchFragmentationMonthlyRows (months, endMonth) {
+  const start = shiftMonths(endMonth, -(months - 1))
+  return mshRequest(`/v1/stats/monthly/fragmentation-events?start_date=${toDateString(startOfMonth(start))}&end_date=${toDateString(endOfMonth(endMonth))}`)
 }
 
-// Both monthly-breakdown endpoints only return rows for months that actually had
-// something happen — not a zero-filled calendar (confirmed: fragmentation incidents are
-// rare enough that a 12-month request can come back with a single row). Fill the gaps so
-// the trend strip always shows one card per requested month, with real zeroes rather
-// than missing months.
-function fillMonthlySeries (rows, months) {
+// Neither monthly-breakdown endpoint returns a zero-filled calendar (confirmed: a 12-month
+// fragmentation request can come back with only 2 rows) — fill the gaps so the trend
+// always shows one point per month in the window, anchored at `endMonth` rather than
+// always "today", so this works regardless of which reporting month is selected.
+function fillMonthlySeries (rows, months, endMonth) {
   const byMonth = rows.reduce((acc, row) => {
     acc[row.month] = (acc[row.month] || 0) + row.count
     return acc
   }, {})
-  return listRecentMonths(months)
+  return listRecentMonths(months, endMonth)
     .slice()
     .reverse()
     .map((month) => {
@@ -50,72 +62,30 @@ function fillMonthlySeries (rows, months) {
     })
 }
 
-// CORRECTED: this was calling /v1/stats/monthly/conjunction-events (genuinely slow,
-// 15-60s+, needed a background-only fetch). There's a separate "-aggregated" endpoint
-// with the same params, confirmed directly at 66-311ms including a full 12-month range
-// in a single call — no background-fetch workaround needed. Returns one row per month
-// with an explicit `total` (not one row per probability-range needing summation).
-//
-// CONFIRMED (not just suspected): this total is a raw screening count, not the same
-// metric as NSpOC's own reported monthly figure — see monthly-overview.js's
-// fetchConjunctionMonthlyTotal for the full live investigation and CLAUDE.md's "Known
-// open issue" section. This is a permanent MSH data-model gap, not fixable by choosing a
-// different endpoint.
-async function fetchConjunctionMonthlyTrend (months) {
-  const end = currentMonth()
-  const start = shiftMonths(end, -(months - 1))
-  const rows = await mshRequest(`/v1/stats/monthly/conjunction-events-aggregated?start_date=${toDateString(startOfMonth(start))}&end_date=${toDateString(endOfMonth(end))}`)
-  return fillMonthlySeries(rows.map((row) => ({ month: row.month, count: row.total })), months)
-}
-
-async function fetchFragmentationMonthlyTrend (months) {
-  const end = currentMonth()
-  const start = shiftMonths(end, -(months - 1))
-  const rows = await mshRequest(`/v1/stats/monthly/fragmentation-events?start_date=${toDateString(startOfMonth(start))}&end_date=${toDateString(endOfMonth(end))}`)
-  return fillMonthlySeries(rows, months)
-}
-
-async function fetchFragmentationByType () {
-  return mshRequest('/v1/stats/fragmentation-events/by-fragmentation-type')
-}
-
-// MSH has no monthly "alert" figure for conjunctions, unlike re-entry's alert_count (see
-// tech-docs "Open questions"). Bucketing /for-analysis events by TCA month is the closest
-// available stand-in: how many of the events currently past the probability threshold
-// had their closest approach in a given month. Because /for-analysis only ever returns
-// the current outstanding queue, not a historical archive, a month's count can still
-// drop later as those events get resolved — it's an approximation, not a true historical
-// total, which is why it's surfaced as "needing analysis" rather than "alerts".
-function bucketAnalysisEventsByMonth (events, months) {
-  const byMonth = events.reduce((acc, event) => {
-    if (!event.tca_time) return acc
-    const date = new Date(event.tca_time)
-    const key = monthKey({ year: date.getFullYear(), month: date.getMonth() })
-    acc[key] = (acc[key] || 0) + 1
+// Conjunction rows carry a probability-band breakdown, not a single count. The raw
+// monthly total (tens of thousands of screenings) used to be plotted here too, but it's
+// dropped entirely — it's so far from NSpOC's own reported figure that showing it at all,
+// even alongside a caveat, read as simply wrong. The "> 1e-3" band — screenings that
+// crossed the analysis threshold — is what's shown, as the closest available proxy for
+// NSpOC's own "Alerts Issued" line (MSH has no literal alerts concept for conjunctions).
+function fillConjunctionMonthlySeries (rows, months, endMonth) {
+  const byMonth = rows.reduce((acc, row) => {
+    acc[row.month] = row['> 1e-3'] || 0
     return acc
   }, {})
-  return listRecentMonths(months).reduce((acc, month) => {
-    const key = monthKey(month)
-    acc[key] = byMonth[key] || 0
-    return acc
-  }, {})
+  return listRecentMonths(months, endMonth)
+    .slice()
+    .reverse()
+    .map((month) => {
+      const key = monthKey(month)
+      return { month: key, count: byMonth[key] || 0 }
+    })
 }
 
-// /for-analysis rows carry a real collision_probability and each object's physical
-// details inline — a genuinely different, richer shape from the general list, not
-// interchangeable with buildCollisionRow below.
-function buildAnalysisRow (event) {
-  return {
-    primaryObject: event.primary_object_common_name || 'Unknown',
-    secondaryObject: event.secondary_object_common_name || 'Unknown',
-    closestApproach: formatDateTime(event.tca_time),
-    missDistance: event.miss_distance !== null && event.miss_distance !== undefined ? `${event.miss_distance} m` : 'Unknown',
-    collisionProbability: event.collision_probability !== null && event.collision_probability !== undefined
-      ? event.collision_probability.toExponential(2)
-      : 'Unknown',
-    primaryMass: event.primary_object_mass ? `${event.primary_object_mass} kg` : 'Unknown',
-    secondaryMass: event.secondary_object_mass ? `${event.secondary_object_mass} kg` : 'Unknown'
-  }
+function eventFallsInMonth (event, dateField, month) {
+  if (!event[dateField]) return false
+  const date = new Date(event[dateField])
+  return date.getFullYear() === month.year && date.getMonth() === month.month
 }
 
 function buildFragmentationRow (event) {
@@ -130,91 +100,86 @@ function buildFragmentationRow (event) {
   }
 }
 
-async function buildCollisionFragmentationViewModel (requestedMonths) {
-  const months = resolveTrendPeriod(requestedMonths)
+async function buildCollisionFragmentationViewModel (requestedMonth, requestedFragmentationMonths) {
+  const selectedMonth = parseMonthParam(requestedMonth) || currentMonth()
+  const fragmentationLookback = resolveFragmentationLookback(requestedFragmentationMonths)
 
   const [
-    conjunctionListResult,
-    eventsForAnalysisResult,
     fragmentationListResult,
-    conjunctionTrendResult,
-    fragmentationTrendResult,
-    fragmentationByTypeResult
+    conjunctionAggregatedResult,
+    fragmentationTrendResult
   ] = await Promise.all([
-    getSectionData('collision-fragmentation', { liveFetcher: fetchConjunctionList }),
-    getSectionData('collision-fragmentation', { liveFetcher: fetchEventsForAnalysis }),
-    getSectionData('collision-fragmentation', { liveFetcher: fetchFragmentationList }),
-    getSectionData('collision-fragmentation', { liveFetcher: () => fetchConjunctionMonthlyTrend(months) }),
-    getSectionData('collision-fragmentation', { liveFetcher: () => fetchFragmentationMonthlyTrend(months) }),
-    getSectionData('collision-fragmentation', { liveFetcher: fetchFragmentationByType })
+    getSectionData('collision-fragmentation', { liveFetcher: fetchFragmentationListRaw }),
+    getSectionData('collision-fragmentation', { liveFetcher: () => fetchConjunctionMonthlyAggregated(TREND_WINDOW_MONTHS, selectedMonth) }),
+    getSectionData('collision-fragmentation', { liveFetcher: () => fetchFragmentationMonthlyRows(TREND_WINDOW_MONTHS, selectedMonth) })
   ])
 
-  const trendRows = conjunctionTrendResult.status === STATUS.LIVE ? conjunctionTrendResult.data : []
+  const aggregatedRows = conjunctionAggregatedResult.status === STATUS.LIVE ? conjunctionAggregatedResult.data : []
   const fragTrendRows = fragmentationTrendResult.status === STATUS.LIVE ? fragmentationTrendResult.data : []
 
-  const analysisRows = eventsForAnalysisResult.status === STATUS.LIVE ? eventsForAnalysisResult.data.map(buildAnalysisRow) : []
-  const fragmentationRows = fragmentationListResult.status === STATUS.LIVE ? fragmentationListResult.data.map(buildFragmentationRow) : []
+  const fragmentationEvents = fragmentationListResult.status === STATUS.LIVE ? fragmentationListResult.data : []
+  const fragmentationRows = fragmentationEvents
+    .filter((event) => {
+      const cutoff = startOfMonth(shiftMonths(currentMonth(), -(fragmentationLookback - 1)))
+      return !event.event_epoch || new Date(event.event_epoch) >= cutoff
+    })
+    .map(buildFragmentationRow)
 
-  const analysisEventsByMonth = eventsForAnalysisResult.status === STATUS.LIVE
-    ? bucketAnalysisEventsByMonth(eventsForAnalysisResult.data, months)
-    : {}
+  // Latest month first for the line charts (matches re-entry's convention — buildLineChart
+  // itself re-reverses to chronological for plotting).
+  const rawTrend = fillConjunctionMonthlySeries(aggregatedRows, TREND_WINDOW_MONTHS, selectedMonth).slice().reverse()
+  const rawFragmentationTrend = fillMonthlySeries(fragTrendRows, TREND_WINDOW_MONTHS, selectedMonth).slice().reverse()
+  const trend = rawTrend.map((row) => ({ month: formatMonth(row.month), count: row.count }))
+  const fragmentationTrend = rawFragmentationTrend.map((row) => ({ month: formatMonth(row.month), count: row.count }))
 
-  const riskDonut = conjunctionListResult.status === STATUS.LIVE
-    ? buildDonut(
-        Object.entries(
-          conjunctionListResult.data.reduce((acc, event) => {
-            const bucket = bucketByInterest(event)
-            acc[bucket] = (acc[bucket] || 0) + 1
-            return acc
-          }, {})
-        ).map(([label, value]) => ({ label, value }))
-      )
+  const selectedAggregatedRow = aggregatedRows.find((row) => row.month === monthKey(selectedMonth)) || null
+  const riskDonut = conjunctionAggregatedResult.status === STATUS.LIVE
+    ? buildDonut([
+        { label: `Low (< 1e-5)`, value: selectedAggregatedRow ? selectedAggregatedRow['< 1e-5'] : 0 },
+        { label: `Medium (1e-5 to 1e-3)`, value: selectedAggregatedRow ? selectedAggregatedRow['1e-3 .. 1e-5'] : 0 },
+        { label: `High (> 1e-3)`, value: selectedAggregatedRow ? selectedAggregatedRow['> 1e-3'] : 0 }
+      ])
     : buildDonut([])
 
-  const fragTypeDonut = fragmentationByTypeResult.status === STATUS.LIVE
-    ? buildDonut(fragmentationByTypeResult.data.map((row) => ({ label: row.fragmentation_type, value: row.count })))
+  const fragTypeCountsThisMonth = fragmentationEvents
+    .filter((event) => eventFallsInMonth(event, 'event_epoch', selectedMonth))
+    .reduce((acc, event) => {
+      const type = event.fragmentation_type || 'Unknown'
+      acc[type] = (acc[type] || 0) + 1
+      return acc
+    }, {})
+  const fragTypeDonut = fragmentationListResult.status === STATUS.LIVE
+    ? buildDonut(Object.entries(fragTypeCountsThisMonth).map(([label, value]) => ({ label, value })))
     : buildDonut([])
 
-  // Latest month first — the current/most recent period is what you want to see
-  // immediately, not after scrolling right past everything older. The bar chart uses the
-  // same latest-first order/data as the cards (buildBarChart just plots whatever order
-  // it's given), so switching views never reorders anything underneath the reader.
-  const trend = trendRows.slice().reverse().map((row) => ({
-    month: formatMonth(row.month),
-    count: row.count,
-    analysisCount: analysisEventsByMonth[row.month]
+  const monthOptions = listRecentMonths(MONTH_OPTIONS_COUNT).map((month) => ({
+    value: monthKey(month),
+    text: monthLabel(month) + (monthKey(month) === monthKey(currentMonth()) ? ' (current)' : '')
   }))
-  const fragmentationTrend = fragTrendRows.slice().reverse().map((row) => ({ month: formatMonth(row.month), count: row.count }))
 
   return {
     status: worstStatus(
-      conjunctionListResult.status,
       fragmentationListResult.status,
-      conjunctionTrendResult.status,
+      conjunctionAggregatedResult.status,
       fragmentationTrendResult.status
     ),
+    selectedMonth: monthKey(selectedMonth),
+    selectedMonthLabel: monthLabel(selectedMonth),
+    monthOptions,
     trend,
     fragmentationTrend,
-    trendChart: buildBarChart(trend),
-    fragmentationTrendChart: buildBarChart(fragmentationTrend),
-    trendMonths: months,
-    trendPeriods: ALLOWED_TREND_PERIODS,
-    collisionCount: conjunctionListResult.status === STATUS.LIVE ? conjunctionListResult.data.length : null,
-    collisionStatus: conjunctionListResult.status,
-    reportedCount: conjunctionListResult.status === STATUS.LIVE
-      ? conjunctionListResult.data.filter((event) => event.report_number !== null && event.report_number !== undefined).length
-      : null,
-    requiresAnalysisCount: eventsForAnalysisResult.status === STATUS.LIVE ? eventsForAnalysisResult.data.length : null,
-    requiresAnalysisStatus: eventsForAnalysisResult.status,
+    trendChart: buildLineChart(trend),
+    fragmentationTrendChart: buildLineChart(fragmentationTrend),
+    trendWindowMonths: TREND_WINDOW_MONTHS,
     analysisThreshold: ANALYSIS_THRESHOLD.toExponential(0),
-    fragmentationCount: fragmentationListResult.status === STATUS.LIVE ? fragmentationListResult.data.length : null,
-    fragmentationStatus: fragmentationListResult.status,
-    analysisRows,
     fragmentationRows,
+    fragmentationLookbackMonths: fragmentationLookback,
+    fragmentationLookbackPeriods: ALLOWED_FRAGMENTATION_LOOKBACK,
+    fragmentationTotalInLookback: fragmentationRows.length,
     riskDonut,
-    riskDonutStatus: conjunctionListResult.status,
+    riskDonutStatus: conjunctionAggregatedResult.status,
     fragTypeDonut,
-    fragTypeDonutStatus: fragmentationByTypeResult.status
+    fragTypeDonutStatus: fragmentationListResult.status
   }
 }
 

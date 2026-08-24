@@ -12,12 +12,20 @@
 {% from "macros/explainer.njk" import explainer %}
 {% from "macros/present-link.njk" import presentLink %}
 {% from "macros/tracked-objects-table.njk" import trackedObjectsTable %}
-{% from "govuk/components/tabs/macro.njk" import govukTabs %}
+{% from "macros/re-entry-map.njk" import reEntryMap %}
+
+{% block stylesheets %}
+  {{ super() }}
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.css" rel="stylesheet">
+{% endblock %}
 
 {% block content %}
 
 {{ mshBadge(viewModel.status) }}
 <h1 class="govuk-heading-xl">Re-Entry Early Warning</h1>
+
+<p class="govuk-body">Reporting period: <strong>{{ viewModel.periodStartLabel }} to {{ viewModel.periodEndLabel }}</strong>.</p>
+{{ periodSelector("/re-entry", viewModel.trendMonths, viewModel.trendPeriods, "months", "month") }}
 
 <div class="msh-kpi-grid">
   {{ kpiTile({ label: "Uncontrolled Re-Entries Tracked (last " + viewModel.trendMonths + " month" + ("s" if viewModel.trendMonths != 1) + ")", value: viewModel.periodTotalCount }) }}
@@ -28,54 +36,41 @@
 {{ explainer("What do these figures mean, and where do they come from?", "
   <p class='govuk-body'>Figures marked <strong>Live from MSH API</strong> are fetched directly from the Monitor Space Hazards service each time this page loads. If MSH doesn't respond, the affected figures show <strong>No data available</strong> instead of an old or placeholder number.</p>
   <p class='govuk-body'>“Objects Analysed for Risk” counts objects where an analyst has completed a risk assessment (atmospheric, human casualty or fragments risk). Most currently-tracked objects show <strong>Pending analysis</strong> because that review normally happens closer to, or after, the predicted re-entry date.</p>
-  <p class='govuk-body'>The reporting period below (1 to 24 months) controls both the trend strip and the tracked objects tabs further down. It isn't fixed to a single month. MSH's re-entry list has no date-range filter of its own, so we fetch the full tracked archive once and apply the selected period here.</p>
-  <p class='govuk-body'><a class='govuk-link' href='/data-sources'>See the exact endpoint behind every figure on this page</a>.</p>
+  <p class='govuk-body'><a class='govuk-link govuk-link--no-visited-state' href='/data-sources'>See the exact endpoint behind every figure on this page</a>.</p>
 ") }}
 
-<h2 class="govuk-heading-l">Number of re-entries tracked</h2>
-{{ periodSelector("/re-entry", viewModel.trendMonths, viewModel.trendPeriods, "months", "month") }}
-<p class="govuk-body-s msh-month-strip__scroll-hint">Latest month first — scroll right for earlier months →</p>
-{{ trendView("reentry-trend", "Number of re-entries tracked", viewModel.trend, viewModel.trendChart) }}
+{% if viewModel.objectsTruncated %}
+  <p class="govuk-body-s">Showing the most recent {{ viewModel.objectsCap }} of {{ viewModel.objectsTotalInPeriod }} objects tracked in this reporting period.</p>
+{% endif %}
+
+<h2 class="govuk-heading-l">Number of re-entries tracked (reporting period)</h2>
+<p class="govuk-body-s msh-month-strip__scroll-hint">Latest month first. Scroll right for earlier months →</p>
+{{ trendView("reentry-trend", "Number of re-entries tracked", viewModel.trend, viewModel.trendChart, "line") }}
+
+<h2 class="govuk-heading-l">Re-entry map (reporting period)</h2>
+<p class="govuk-body">
+  Predicted final re-entry location for each object tracked in this reporting period.
+  {% if viewModel.mapData.unresolvedCount > 0 %}{{ viewModel.mapData.unresolvedCount }} of {{ viewModel.mapData.totalCount }} have no resolved location yet.{% endif %}
+  For every currently tracked object regardless of period, see the <a class="govuk-link govuk-link--no-visited-state" href="/re-entry/map">full interactive map</a>.
+</p>
+{{ reEntryMap(viewModel.mapData, "embedded", "reentry-page-map") }}
 
 <h2 class="govuk-heading-l">Data analysis (reporting period)</h2>
 {{ donutChart("Object Types", viewModel.objectTypeDonut, viewModel.status) }}
 
-<h2 class="govuk-heading-l">Tracked objects</h2>
-<p class="govuk-body">Select an object name to see its full Tracking and Impact Prediction (TIP) detail, including re-entry history. Or see all tracked objects plotted on a <a class="govuk-link" href="/re-entry/map">live interactive map</a>.</p>
-<p class="govuk-body">
-  <strong>Upcoming</strong> objects are still ahead of their predicted decay. Once an object decays it moves to <strong>Pending Analysis</strong> until an analyst completes a risk assessment, after which it moves to <strong>Analysed</strong>.
-  {% if viewModel.objectsTruncated %}Showing the most recent {{ viewModel.objectsCap }} of {{ viewModel.objectsTotalInPeriod }} tracked in the selected {{ viewModel.trendMonths }}-month period.{% endif %}
-</p>
-
-{% set upcomingPanel %}{{ trackedObjectsTable(viewModel.tabs.upcoming, "No objects currently upcoming in this period.") }}{% endset %}
-{% set pendingAnalysisPanel %}{{ trackedObjectsTable(viewModel.tabs.pendingAnalysis, "No objects pending analysis in this period.") }}{% endset %}
-{% set analysedPanel %}{{ trackedObjectsTable(viewModel.tabs.analysed, "No analysed objects in this period.") }}{% endset %}
-
-{{ govukTabs({
-  idPrefix: "tracked-objects",
-  title: "Tracked objects by status",
-  items: [
-    {
-      label: "Upcoming (" + viewModel.tabs.upcoming.length + ")",
-      id: "tracked-objects-upcoming",
-      panel: { html: upcomingPanel }
-    },
-    {
-      label: "Pending Analysis (" + viewModel.tabs.pendingAnalysis.length + ")",
-      id: "tracked-objects-pending-analysis",
-      panel: { html: pendingAnalysisPanel }
-    },
-    {
-      label: "Analysed (" + viewModel.tabs.analysed.length + ")",
-      id: "tracked-objects-analysed",
-      panel: { html: analysedPanel }
-    }
-  ]
-}) }}
+<h2 class="govuk-heading-l">Risks to UK Interests and/or Overflights of UK or UK Overseas Territories (reporting period)</h2>
+<p class="govuk-body">Objects tracked in the selected reporting period whose predicted final re-entry location is the UK or a UK Overseas Territory. Select an object name for its full Tracking and Impact Prediction (TIP) detail.</p>
+<p class="govuk-body">This reflects predicted final re-entry location only. MSH doesn't provide orbital ground track data, so an object that overflew the UK without re-entering there isn't something this table (or MSH) can capture, only the "location" half of the title above.</p>
+{{ trackedObjectsTable(viewModel.ukRiskRows, "No objects predicted to re-enter over the UK or a UK Overseas Territory in this reporting period.") }}
 
 <div class="govuk-button-group">
   {{ printLink() }}
   {{ presentLink("/present/re-entry") }}
 </div>
 
+{% endblock %}
+
+{% block pageScripts %}
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.9.0/mapbox-gl.js"></script>
+  <script src="/public/javascripts/re-entry-map.js"></script>
 {% endblock %}
