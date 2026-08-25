@@ -5,6 +5,8 @@
 {% from "macros/present-controls.njk" import presentControls %}
 {% from "macros/kpi-tile.njk" import kpiTile %}
 {% from "macros/donut-chart.njk" import donutChart %}
+{% from "macros/line-chart.njk" import lineChart %}
+{% from "macros/tracked-objects-table.njk" import trackedObjectsTable %}
 {% from "macros/badge.njk" import mshBadge %}
 
 {% block content %}
@@ -20,6 +22,27 @@
       {{ kpiTile({ label: "Objects Analysed for Risk", value: viewModel.analysedCount, unit: "of " + viewModel.totalCount }) }}
     </div>
 
-    {{ donutChart("Object Types", viewModel.objectTypeDonut, viewModel.status) }}
+    {{ lineChart("Number of re-entries tracked", viewModel.trendChart, "Number of Re-Entries") }}
+
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-one-half">
+        {{ donutChart("Object Types", viewModel.objectTypeDonut, viewModel.status) }}
+        <div class="msh-donut-grid">
+          <div class="msh-donut-chart-card msh-stat-card">
+            <div class="msh-stat-card__row">
+              <span class="msh-stat-card__icon" aria-hidden="true">kg</span>
+              <div class="msh-stat-card__body">
+                <span class="msh-stat-card__value">{{ viewModel.averageMassKg or "Unknown" }}{% if viewModel.averageMassKg %} kg{% endif %}</span>
+                <span class="msh-stat-card__label">Average Object Mass</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="govuk-grid-column-one-half">
+        <h2 class="govuk-heading-s">Risks to UK Interests and/or Overflights of UK or UK Overseas Territories</h2>
+        {{ trackedObjectsTable(viewModel.ukRiskRows, "No objects with a UK risk tracked this month.") }}
+      </div>
+    </div>
   </div>
 {% endblock %}
