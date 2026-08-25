@@ -1,8 +1,10 @@
 {#
 Renders the object from app/lib/charts/line-chart.js: one or two lines sharing a chart
 but not a scale, each is independently scaled to its own max (see line-chart.js, sharing
-a scale would flatten the smaller series). Points carry native <title> tooltips, same
-pattern as bar-chart.njk.
+a scale would flatten the smaller series). Since the two lines don't share a scale, the
+legend states each one's own range (0 to its max), otherwise two lines of similar-looking
+height read as similar-sized numbers even when one's peak is several times the other's.
+Points carry native <title> tooltips, same pattern as bar-chart.njk.
 
 `countLabel`/`alertLabel` default to re-entry's wording, pass different labels when
 "alerts" isn't right (e.g. Collision & Fragmentation's second line is a
@@ -18,9 +20,9 @@ alerts-equivalent figure), that line is skipped rather than drawing a fake flat 
   {% set alertShortLabel = alertShortLabel or "alerts" %}
   <div class="msh-line-chart">
     <div class="msh-line-chart__legend">
-      <span class="msh-line-chart__legend-item msh-line-chart__legend-item--count">{{ countLabel }}</span>
+      <span class="msh-line-chart__legend-item msh-line-chart__legend-item--count">{{ countLabel }} (scale 0 to {{ chart.countMax }})</span>
       {% if chart.alertLine %}
-        <span class="msh-line-chart__legend-item msh-line-chart__legend-item--alerts">{{ alertLabel }}</span>
+        <span class="msh-line-chart__legend-item msh-line-chart__legend-item--alerts">{{ alertLabel }} (scale 0 to {{ chart.alertLine.maxValue }})</span>
       {% endif %}
     </div>
     <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" preserveAspectRatio="none" class="msh-line-chart__svg" role="img" aria-label="{{ title }}. See the labels below for exact values">
