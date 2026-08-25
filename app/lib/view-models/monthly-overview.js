@@ -217,14 +217,23 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     caveat: "Not filtered to UK satellites and not scoped to this month. NSpOC's own reported figure isn't available via any MSH endpoint found so far. See Data sources."
   })
 
-  const collisionAlertTile = buildConjunctionStatsTile({
+  // Confirmed live: conjunction_event_alert_count isn't a monthly alert count, it's
+  // MSH's own classification of the entire current future-tracked catalogue into
+  // alert/normal (alert_count + normal_count = total_count exactly, ~13,825 events).
+  // It happened to read "1" here, coincidentally matching NSpOC's May figure, but it
+  // measures the live catalogue at page-load time, not alerts issued in any given
+  // month, and changes independently of which month is selected. Same permanent gap as
+  // Collision Risks above: no live data source for NSpOC's real figure, so this says so
+  // rather than showing a number that looks precise but isn't the right one.
+  const collisionAlertTile = {
     key: 'collision-alerts',
-    label: 'Collision Alerts from NSpOC (current snapshot)',
+    label: 'Collision Alerts from NSpOC',
+    value: null,
+    previousValue: null,
+    delta: null,
     href: '/collision-fragmentation',
-    valueField: 'conjunction_event_alert_count',
-    statsResult: conjunctionStatsResult,
-    caveat: 'Not confirmed to be filtered to UK satellites, see Data sources.'
-  })
+    status: STATUS.NOT_CONNECTED
+  }
 
   // The subset that's crossed a probability threshold and needs analyst review, live and
   // fast (~1-2s). A current outstanding-review count, not a historical monthly total,

@@ -29,10 +29,17 @@ module.exports = [
   },
   {
     page: 'Monthly Overview', pageHref: '/monthly-overview',
-    figure: 'Conjunction Events Tracked / Collision Alerts from NSpOC (current snapshot)',
+    figure: 'Conjunction Events Tracked (current catalogue)',
     sectionKey: 'collision-fragmentation', gate: 'msh',
     endpoints: ['/v1/conjunction-events/stats?epoch=future'],
     description: 'Current snapshot, not month-scoped (endpoint has no date filter). Not limited to UK satellites, so differs from NSpOC\'s reported figure.'
+  },
+  {
+    page: 'Monthly Overview', pageHref: '/monthly-overview',
+    figure: 'Collision Alerts from NSpOC',
+    sectionKey: 'collision-fragmentation', gate: 'none',
+    endpoints: [],
+    description: 'The nearest MSH field (conjunction_event_alert_count) is a live classification of the whole current catalogue, not a monthly alert count. Confirmed it can coincidentally match NSpOC\'s figure while measuring something else entirely, so this shows no live source rather than a misleading number.'
   },
   {
     page: 'Monthly Overview', pageHref: '/monthly-overview',
