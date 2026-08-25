@@ -7,10 +7,11 @@
   border: 1px solid govuk-functional-colour(border);
 }
 
-// Inline map on the Re-Entry page, shorter than the dedicated Re-Entry Map page since it
-// sits alongside a table and charts rather than being the whole page.
+// Inline map on the Re-Entry page. Same height as the dedicated Re-Entry Map page now,
+// tall enough that fitBounds (see re-entry-map.js) has room to frame every marker
+// without them crowding the edges.
 .msh-map__mapbox--embedded {
-  height: 350px;
+  height: 500px;
 }
 
 // Markers are plain buttons, Mapbox positions them, this only styles appearance.
@@ -24,6 +25,13 @@
   border: 2px solid govuk-colour("white");
   padding: 0;
   cursor: pointer;
+
+  // "Very low" was also unstyled before: the space in the risk string used to split
+  // into two garbage class tokens instead of matching one rule (see re-entry-map.js).
+  // Same green as --low, both read as "minor risk" on a map.
+  &--very-low {
+    background-color: govuk-colour("green");
+  }
 
   &--low {
     background-color: govuk-colour("green");
@@ -40,6 +48,14 @@
 
   &--pending {
     background-color: govuk-colour("black", $variant: "tint-25");
+  }
+
+  // "None" is a real assessed risk (analyst reviewed it, found nothing), distinct from
+  // "pending" (not reviewed yet). Lighter than pending so the two don't read as the same
+  // grey, this was previously unstyled entirely (risk "None" produced an unmatched
+  // --none class), indistinguishable from pending on the map.
+  &--none {
+    background-color: govuk-colour("black", $variant: "tint-50");
   }
 
   &:hover,

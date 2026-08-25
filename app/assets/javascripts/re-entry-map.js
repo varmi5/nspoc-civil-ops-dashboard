@@ -29,6 +29,14 @@
     // straight into a report like NSpOC's own flat "Re-Entry Map (Reporting Period)" slide.
     var projection = container.dataset.mshMapProjection || 'globe'
 
+    // Fixed whole-world view, not fitted to that period's markers. Re-entries can land
+    // anywhere on Earth, so a wide-enough fixed view always contains every marker by
+    // construction, nothing to compute, nothing that can ever crop a marker off the
+    // edge. It also keeps the UK in the same place every time. Fitting to markers
+    // instead was tried and reverted: when a period's re-entries cluster in one
+    // hemisphere (all Southern Hemisphere/Indian Ocean, say), the geometric centre of
+    // "UK plus those markers" lands well south of the UK, dragging the whole view down
+    // toward Africa, the opposite of what a "protecting UK interests" map should show.
     var map = new mapboxgl.Map({
       container: container,
       style: 'mapbox://styles/mapbox/light-v11',
@@ -46,7 +54,10 @@
       // the popup instead.
       var el = document.createElement('button')
       el.type = 'button'
-      el.className = 'msh-map__marker msh-map__marker--' + (marker.risk ? marker.risk.toLowerCase() : 'pending')
+      // "Very low" has a space, which would otherwise split into two garbage class
+      // tokens instead of one matching --very-low rule below.
+      var riskSlug = marker.risk ? marker.risk.toLowerCase().replace(/\s+/g, '-') : 'pending'
+      el.className = 'msh-map__marker msh-map__marker--' + riskSlug
       el.setAttribute('aria-label', marker.objectName + ', ' + marker.objectType +
         ', predicted decay ' + marker.decayDate + ', risk ' + (marker.risk || 'pending analysis') +
         ', location ' + marker.location)
