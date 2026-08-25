@@ -18,6 +18,13 @@ more than one.
         data-msh-map-projection="{{ 'mercator' if variant == 'embedded' else 'globe' }}"
       ></div>
       <script type="application/json" data-msh-mapbox-data>{{ mapData.mapboxData | safe }}</script>
+      <ul class="msh-map__legend">
+        <li class="msh-map__legend-item"><span class="msh-map__marker msh-map__marker--high"></span> High / Critical</li>
+        <li class="msh-map__legend-item"><span class="msh-map__marker msh-map__marker--medium"></span> Medium</li>
+        <li class="msh-map__legend-item"><span class="msh-map__marker msh-map__marker--low"></span> Low / Very low</li>
+        <li class="msh-map__legend-item"><span class="msh-map__marker msh-map__marker--none"></span> None</li>
+        <li class="msh-map__legend-item"><span class="msh-map__marker msh-map__marker--pending"></span> Pending analysis</li>
+      </ul>
     {% else %}
       <div class="govuk-inset-text">
         Map not available — no <code>MAPBOX_ACCESS_TOKEN</code> has been configured for this environment.

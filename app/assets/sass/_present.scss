@@ -52,18 +52,3 @@ body.present-mode {
   @include govuk-font($size: 19);
 }
 
-.msh-present-slide__legend {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: govuk-spacing(2);
-  margin-top: govuk-spacing(3);
-
-  .msh-map__marker {
-    margin-left: govuk-spacing(3);
-
-    &:first-of-type {
-      margin-left: 0;
-    }
-  }
-}

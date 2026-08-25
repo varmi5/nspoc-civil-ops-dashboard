@@ -64,3 +64,21 @@
     height: 18px;
   }
 }
+
+// The key under every map (embedded, dedicated page, and presentation slide, this is
+// shared by macros/re-entry-map.njk so all three stay in sync automatically).
+.msh-map__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: govuk-spacing(1) govuk-spacing(4);
+  list-style: none;
+  margin: govuk-spacing(2) 0 0;
+  padding: 0;
+}
+
+.msh-map__legend-item {
+  display: flex;
+  align-items: center;
+  gap: govuk-spacing(1);
+  @include govuk-font($size: 16);
+}
