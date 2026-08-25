@@ -3,7 +3,7 @@ const { mshRequest } = require('../msh/client')
 const { buildDonut } = require('../charts/donut')
 const { buildLineChart } = require('../charts/line-chart')
 const { STATUS, worstStatus } = require('../msh/status')
-const { highestRiskOverTime, hasKnownRisk, isRealRiskValue } = require('../format-risk')
+const { highestRisk, reentryRisk, hasKnownRisk, isElevatedRisk } = require('../format-risk')
 const { formatDate, formatDateTime, formatMonth } = require('../format-date')
 const {
   toDateString, startOfMonth, endOfMonth, currentMonth, shiftMonths,
@@ -172,7 +172,7 @@ async function attachLatestLocation (event, catalogMap) {
     location: tips.length ? formatLocation(latestTip) : 'Unknown',
     latitude: latestTip ? latestTip.latitude : null,
     longitude: latestTip ? normaliseLongitude(latestTip.longitude) : null,
-    historicalRisk: highestRiskOverTime(event, tips)
+    risk: reentryRisk(event)
   }
 }
 
@@ -242,17 +242,8 @@ async function buildReEntryViewModel (requestedMonth) {
   const now = new Date()
   const rows = enrichedEvents.map((event) => ({
     objectType: bucketObjectType(event.object_type),
-    objectName: event.object_name,
-    mass: event.estimated_mass ? `${event.estimated_mass} kg` : 'Unknown',
-    date: formatDate(event.decay_epoch),
-    risk: event.historicalRisk,
-    location: event.location,
-    noradId: event.norad_id,
     isUpcoming: Boolean(event.decay_epoch) && new Date(event.decay_epoch) > now,
-    // Predicted final landing in the UK/a UK Overseas Territory, OR MSH's own
-    // uk_reentry_probability ("Risk to the UK" in MSH's own executive summary), an
-    // overflight-based figure independent of where the object actually lands.
-    isUkInterest: event.location === 'United Kingdom' || isRealRiskValue(event.uk_reentry_probability)
+    risk: event.risk
   }))
 
   const objectTypeCounts = rows.reduce((acc, row) => {
@@ -260,14 +251,37 @@ async function buildReEntryViewModel (requestedMonth) {
     return acc
   }, {})
 
+  // Matches NSpOC's "Average Object Mass this Reporting Period" slide. Objects with no
+  // mass on record (Unknown, or a literal 0) are excluded rather than counted as zero,
+  // otherwise missing data would drag the average down instead of just not contributing.
+  const knownMasses = enrichedEvents
+    .map((event) => event.estimated_mass)
+    .filter((mass) => typeof mass === 'number' && mass > 0)
+  const averageMassKg = knownMasses.length
+    ? Math.round(knownMasses.reduce((sum, mass) => sum + mass, 0) / knownMasses.length)
+    : null
+
   // Risk assessment happens close to or after the decay date, so an "upcoming" object
   // with a risk rating would be unusual. Excluded so "Objects Analysed for Risk" only
   // counts already-decayed objects.
   const analysedRows = rows.filter((row) => !row.isUpcoming && row.risk !== null)
 
   // Matches NSpOC's "Risks to UK Interests and/or Overflights of UK or UK Overseas
-  // Territories" table.
-  const ukRiskRows = rows.filter((row) => row.isUkInterest)
+  // Territories" table. Confirmed against a real NSpOC report: an object with "None"
+  // atmospheric/fragments risk still had a "Low" rating there, driven by
+  // uk_reentry_probability, so this combines both rather than atmospheric/fragments
+  // alone. Only a genuinely elevated rating counts as a risk worth listing, "None" isn't.
+  const ukRiskRows = enrichedEvents
+    .map((event) => ({
+      objectType: bucketObjectType(event.object_type),
+      objectName: event.object_name,
+      mass: event.estimated_mass ? `${event.estimated_mass} kg` : 'Unknown',
+      date: formatDate(event.decay_epoch),
+      risk: combinedRisk(event),
+      location: event.location,
+      noradId: event.norad_id
+    }))
+    .filter((row) => isElevatedRisk(row.risk))
 
   // Latest month first, the current period is what you want to see immediately.
   const trend = trendRows.slice().reverse().map((row) => ({
@@ -296,6 +310,8 @@ async function buildReEntryViewModel (requestedMonth) {
     objectsTotalInPeriod: totalInPeriod,
     objectsTruncated: truncated,
     analysedCount: analysedRows.length,
+    averageMassKg,
+    averageMassSampleSize: knownMasses.length,
     totalCount: rows.length,
     objectTypeDonut: buildDonut(Object.entries(objectTypeCounts).map(([label, value]) => ({ label, value }))),
     mapData: buildMapData(enrichedEvents)
@@ -355,7 +371,7 @@ async function buildReEntryObjectViewModel (noradId) {
     perigee: perigee ? `${perigee} km` : 'Unknown',
     inclination: inclination !== null && inclination !== undefined ? `${inclination}°` : 'Unknown',
     decayEpoch: formatDateTime(event.decay_epoch),
-    risk: highestRiskOverTime(event, tips),
+    risk: reentryRisk(event),
     predictedLocation: formatLocation(latestTip),
     reentryHistory: sortedTips.map((tip) => ({
       reportedAt: formatDateTime(tip.creation_date),
@@ -365,6 +381,15 @@ async function buildReEntryObjectViewModel (noradId) {
       source: tip.source || 'Unknown'
     }))
   }
+}
+
+// The map and UK risk table both need risk including MSH's uk_reentry_probability
+// signal, not atmospheric/fragments alone, otherwise an object can show "Low" in the
+// table while its marker on the map still reads "None" for the same object. The general
+// risk figure (KPI tile, object-type donut, object detail page) stays atmospheric/
+// fragments only, unaffected.
+function combinedRisk (event) {
+  return highestRisk(event.risk, event.uk_reentry_probability)
 }
 
 // Shared by the dedicated Re-Entry Map page (uncapped by reporting period) and the
@@ -377,7 +402,7 @@ function buildMapData (events) {
     noradId: event.norad_id,
     objectName: event.object_name,
     objectType: bucketObjectType(event.object_type),
-    risk: event.historicalRisk,
+    risk: combinedRisk(event),
     decayDate: formatDate(event.decay_epoch),
     location: event.location,
     latitude: event.latitude,

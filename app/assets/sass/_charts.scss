@@ -59,6 +59,55 @@ $msh-brand-red: #c00000;
   margin-bottom: govuk-spacing(3);
 }
 
+// A single-figure stat card sharing the donut grid/card styling (same border, padding,
+// grid cell), for a figure that's a plain number rather than a chart. Matches NSpOC's
+// own "Average Object Mass" slide: an icon badge next to a big value and its label.
+// No explicit height here on purpose: CSS Grid only auto-stretches a grid item to match
+// its row (matching the taller donut card next to it) when the item's own height
+// computes to auto. Setting height:100% here, even though it sounds like the same
+// thing, opts back out of that stretch and the card shrinks to its own content instead.
+.msh-stat-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: govuk-spacing(2);
+}
+
+.msh-stat-card__row {
+  display: flex;
+  align-items: center;
+  gap: govuk-spacing(3);
+}
+
+.msh-stat-card__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: $msh-brand-blue;
+  color: govuk-colour("white");
+  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.msh-stat-card__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.msh-stat-card__value {
+  @include govuk-font($size: 27, $weight: bold);
+}
+
+.msh-stat-card__label {
+  @include govuk-font($size: 16);
+  color: govuk-colour("black", $variant: "tint-25");
+}
+
 .msh-donut-chart {
   display: flex;
   align-items: center;

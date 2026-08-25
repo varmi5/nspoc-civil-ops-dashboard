@@ -56,7 +56,24 @@
 {{ reEntryMap(viewModel.mapData, "embedded", "reentry-page-map") }}
 
 <h2 class="govuk-heading-l">Data analysis ({{ viewModel.selectedMonthLabel }})</h2>
-{{ donutChart("Object Types", viewModel.objectTypeDonut, viewModel.status) }}
+<div class="msh-donut-grid">
+  <div class="msh-donut-chart-card">
+    {{ donutChart("Object Types", viewModel.objectTypeDonut, viewModel.status) }}
+  </div>
+  <div class="msh-donut-chart-card msh-stat-card">
+    <div class="msh-stat-card__row">
+      <span class="msh-stat-card__icon" aria-hidden="true">kg</span>
+      <div class="msh-stat-card__body">
+        <span class="msh-stat-card__value">{{ viewModel.averageMassKg or "Unknown" }}{% if viewModel.averageMassKg %} kg{% endif %}</span>
+        <span class="msh-stat-card__label">Average Object Mass ({{ viewModel.selectedMonthLabel }})</span>
+      </div>
+    </div>
+    <details class="msh-kpi-tile__info">
+      <summary class="msh-kpi-tile__info-icon" aria-label="More information about this figure">i</summary>
+      <p class="msh-kpi-tile__info-text">Mean mass across {{ viewModel.averageMassSampleSize }} object{{ "s" if viewModel.averageMassSampleSize != 1 }} with a known mass. Objects with no mass on record are excluded, not counted as zero.</p>
+    </details>
+  </div>
+</div>
 
 <h2 class="govuk-heading-l">Risks to UK Interests and/or Overflights of UK or UK Overseas Territories ({{ viewModel.selectedMonthLabel }})</h2>
 <p class="govuk-body">Objects tracked in {{ viewModel.selectedMonthLabel }} that are predicted to land in the UK or a UK Overseas Territory, or that MSH has assessed a UK overflight risk for. Select an object name for its full Tracking and Impact Prediction (TIP) detail.</p>

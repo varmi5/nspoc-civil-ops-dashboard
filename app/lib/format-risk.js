@@ -22,11 +22,14 @@ function highestRisk (...values) {
   })
 }
 
-// Highest risk an object ever reached, across the event and its full TIP history.
-// Human casualty risk is excluded (confirmed with NSpOC, not actually checked).
-function highestRiskOverTime (event, tips) {
-  const values = [event, ...tips].flatMap((assessment) => [assessment.atmospheric_risk, assessment.fragments_risk])
-  return highestRisk(...values)
+// Worst of atmospheric/fragments risk on a reentry event. Human casualty risk is
+// excluded (confirmed with NSpOC, not actually checked). MSH's TIP records carry no risk
+// fields at all (confirmed against MSH's own TIPOut schema and a live fetch), only the
+// event itself ever holds a risk value, and there's no history/revision endpoint to see
+// what it used to be. So this reads the event's current fields, there's nothing else to
+// read.
+function reentryRisk (event) {
+  return highestRisk(event.atmospheric_risk, event.fragments_risk)
 }
 
 // Whether a single risk-like value is a real assessed risk, not null/none/pending.
@@ -34,6 +37,13 @@ function isRealRiskValue (value) {
   if (value === null || value === undefined || value === '') return false
   const normalised = String(value).trim().toLowerCase()
   return normalised !== 'none' && normalised !== 'pending'
+}
+
+// Whether a value is a genuinely elevated rating, "Very low" and up. Excludes "None"
+// as well as null/pending, unlike isRealRiskValue above (which treats "None" as real,
+// just zero severity).
+function isElevatedRisk (value) {
+  return isRealRiskValue(value) && String(value).trim().toLowerCase() !== 'none'
 }
 
 // Whether an event already shows a real risk on its current record: atmospheric,
@@ -45,4 +55,4 @@ function hasKnownRisk (event) {
   return [event.atmospheric_risk, event.fragments_risk, event.uk_reentry_probability].some(isRealRiskValue)
 }
 
-module.exports = { highestRisk, highestRiskOverTime, hasKnownRisk, isRealRiskValue }
+module.exports = { highestRisk, reentryRisk, hasKnownRisk, isElevatedRisk }
