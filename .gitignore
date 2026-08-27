@@ -10,3 +10,6 @@ migrate.log
 .DS_Store
 .idea
 *.lnk
+
+# Internal AI-agent notes, not for handover
+CLAUDE.md
