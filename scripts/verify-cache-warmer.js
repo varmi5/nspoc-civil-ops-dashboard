@@ -1,6 +1,6 @@
-// One-off dev tool: sanity-checks the new cache-warmer in isolation (not via the full
+// One-off dev tool: sanity-checks the cache-warmer in isolation (not via the full
 // Express app, since govukPrototypeKit.requests.setupRouter() needs the kit's runtime
-// context) — calls warmCache() directly and confirms it completes without throwing and
+// context). Calls warmCache() directly and confirms it completes without throwing and
 // actually populates the shared response cache.
 //
 // Run with: node --env-file=.env scripts/verify-cache-warmer.js
@@ -12,7 +12,7 @@ async function main () {
   console.log('Calling warmCache()...')
   warmCache()
 
-  // warmCache() is fire-and-forget by design (routes.js doesn't await it either) — give it
+  // warmCache() is fire-and-forget by design (routes.js doesn't await it either), give it
   // a moment, then confirm a key it should have warmed now resolves instantly from cache.
   await new Promise((resolve) => setTimeout(resolve, 4000))
 

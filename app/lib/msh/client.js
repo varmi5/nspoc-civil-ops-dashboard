@@ -44,13 +44,12 @@ async function requestAndParse (path, options, timeoutMs) {
   return response.json()
 }
 
-// Cached for a short TTL (see response-cache.js). This is a reporting dashboard, not a
-// real-time feed, so a few minutes' staleness is fine in exchange for not hammering MSH.
+// Cached for a short TTL (see response-cache.js): a reporting dashboard, not a real-time
+// feed, so a few minutes' staleness is fine in exchange for not hammering MSH.
 //
-// timeoutMs defaults to REQUEST_TIMEOUT_MS but can be overridden per call.
-// /v1/reentry-events/?epoch=all&limit=2000 alone takes ~1.6-1.9s uncontended (~2.5MB
-// response), close enough to the 4s default that it's first to tip over under load.
-// Give large-response callers a longer timeoutMs rather than lowering everyone else's.
+// timeoutMs defaults to REQUEST_TIMEOUT_MS but can be overridden per call, for large-
+// response endpoints like /v1/reentry-events/?epoch=all&limit=2000 (~1.6-1.9s, ~2.5MB)
+// that would otherwise be first to tip over the 4s default under load.
 async function mshRequest (path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   if (!config.useLiveMsh) {
     throw new Error('mshRequest called while USE_LIVE_MSH is not "true", use getSectionData() with a fixture fallback instead')

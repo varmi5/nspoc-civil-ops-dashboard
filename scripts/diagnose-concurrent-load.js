@@ -1,6 +1,6 @@
 // Follow-up to diagnose-live-timeouts.js: every endpoint is fast in isolation, so the
-// "This operation was aborted" errors seen in the dev server must be a CONCURRENCY effect
-// — e.g. a user clicking through several pages during a cold nodemon restart fires every
+// "This operation was aborted" errors seen in the dev server must be a CONCURRENCY effect,
+// e.g. a user clicking through several pages during a cold nodemon restart fires every
 // section's full fan-out at once (monthly-overview ~13 calls, re-entry ~61, collision-
 // fragmentation 6, launches 1 = ~80 simultaneous connections). Reproduces that combined
 // load in one process to see whether MSH/the network actually degrades under it.

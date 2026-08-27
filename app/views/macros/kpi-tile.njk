@@ -1,26 +1,15 @@
 {% from "macros/badge.njk" import mshBadge %}
 
 {#
-Renders one KPI tile. `params`:
-  label       (string, required)
-  value       (string|number, required unless status is not "live")
-  unit        (string, optional)
-  delta       (string, optional), e.g. "- 20 (29%)"
-  deltaGood   (boolean, optional). True renders green/up, false red/down, omitted is
-              neutral grey. Caller decides, since "up" isn't always good (more high-risk
-              alerts is bad, more UK objects in orbit is just expected growth).
-  href        (string, optional), wraps the value/label/delta in a link when present.
-              The info icon below sits outside this link, a <details> can't nest inside
-              an <a> without breaking keyboard navigation.
-  status      ("live"|"unavailable"|"not-connected", optional). Shows the badge and,
-              when not "live", "N/A" in place of value/delta instead of a number that
-              could be mistaken for real data. The badge explains why, so the value
-              itself doesn't repeat that.
-  caveat      (string, optional), a short always-visible warning under the value even
-              when live, for a figure that's real but not directly comparable (e.g.
-              conjunction-events count vs NSpOC's own reported figure). Plain text only.
-  infoNote    (string, optional), a short note behind an "i" icon instead of shown
-              inline, for a lighter-touch caveat than the always-visible one above.
+Params: label, value, unit (straightforward). delta (string, e.g. "- 20 (29%)").
+deltaGood: true renders green/up, false red/down, omitted is neutral; caller decides,
+since "up" isn't always good (more high-risk alerts is bad, more objects in orbit is
+expected growth). href wraps value/label/delta in a link; the info icon sits outside it,
+since a <details> can't nest inside an <a>. status ("live"|"unavailable"|"not-connected"):
+shows "N/A" instead of a value/delta when not live, plus a badge. caveat: always-visible
+warning under a live value, for a figure that's real but not directly comparable (e.g.
+conjunction-events count vs NSpOC's own reported figure). infoNote: same as caveat but
+behind an "i" icon for a lighter-touch note.
 #}
 {% macro kpiTile(params) %}
   {% set deltaClass = "msh-kpi-tile__delta--neutral" %}

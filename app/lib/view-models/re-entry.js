@@ -63,17 +63,11 @@ async function fetchReentryListRaw () {
   return mshRequest('/v1/reentry-events/?epoch=all&sort_by=decay_epoch&sort_order=desc&limit=2000', {}, REENTRY_LIST_TIMEOUT_MS)
 }
 
-// Keeps the raw fetch (above) and per-caller windowing separate: the table wants the
-// selected reporting month capped to a display size, the map wants whatever it was
-// already showing. One shared fetch, two different slices (the response cache dedupes
-// the underlying MSH call anyway).
-// A pure recency cap can push every currently risk-flagged (or UK-relevant, see
-// hasKnownRisk) event out of a busy month, since there can be more events in a month
-// than `cap` allows. Those fields sit on the raw record with no extra fetch needed, so
-// every one of those events is always included, uncapped, with only the remaining slots
-// up to `cap` filled by recency. In a busy month this means more than `cap` events can
-// come back, on purpose, rather than silently hiding real risk data. `filtered` stays in
-// its original desc-by-decay_epoch order throughout.
+// Table and map share this one fetch and slice it differently: the table caps to a
+// display size, the map doesn't. Risk-flagged and UK-relevant events (see hasKnownRisk)
+// are always included uncapped; only the remaining slots up to `cap` are filled by
+// recency, so a busy month can return more than `cap` events. `filtered` keeps its
+// original desc-by-decay_epoch order throughout.
 function selectAndCap (rawEvents, { month, cap }) {
   let filtered = rawEvents
   if (month) {
@@ -176,16 +170,15 @@ async function attachLatestLocation (event, catalogMap) {
   }
 }
 
-// Shared by the table (buildReEntryViewModel) and the map (buildReEntryMapViewModel), one
-// fetch-and-enrich path, not two. `months`/`cap` are applied BEFORE enrichment since each
-// selected object still costs one live TIP history call, so filtering first bounds that
-// fan-out. When the list itself isn't live, there's nothing to enrich, just an empty,
-// status-flagged result.
+// Shared by the table and the map, one fetch-and-enrich path. `month`/`cap` are applied
+// before enrichment since each selected object costs one live TIP history call, so
+// filtering first bounds that fan-out. An empty, status-flagged result comes back if the
+// list itself isn't live.
 //
 // This page's fan-out (up to TRACKED_OBJECTS_CAP per-object TIP fetches alongside list
-// and catalog calls) is the worst offender in the app for tipping over the 4s abort
-// timeout on a cold cache. Capping how many of its own calls run at once meaningfully
-// reduces how often a first cold load comes back empty (see cache-warmer.js).
+// and catalog calls) is the app's most likely call to hit the 4s abort timeout on a cold
+// cache; capping concurrency reduces how often a first cold load comes back empty (see
+// cache-warmer.js).
 const TIP_FETCH_CONCURRENCY = 10
 
 async function mapWithConcurrencyLimit (items, limit, fn) {
@@ -267,10 +260,10 @@ async function buildReEntryViewModel (requestedMonth) {
   const analysedRows = rows.filter((row) => !row.isUpcoming && row.risk !== null)
 
   // Matches NSpOC's "Risks to UK Interests and/or Overflights of UK or UK Overseas
-  // Territories" table. Confirmed against a real NSpOC report: an object with "None"
-  // atmospheric/fragments risk still had a "Low" rating there, driven by
-  // uk_reentry_probability, so this combines both rather than atmospheric/fragments
-  // alone. Only a genuinely elevated rating counts as a risk worth listing, "None" isn't.
+  // Territories" table: an object with "None" atmospheric/fragments risk can still carry
+  // a "Low" rating there, driven by uk_reentry_probability, so this combines both rather
+  // than atmospheric/fragments alone. Only a genuinely elevated rating counts as a risk
+  // worth listing, "None" isn't.
   const ukRiskRows = enrichedEvents
     .map((event) => ({
       objectType: bucketObjectType(event.object_type),

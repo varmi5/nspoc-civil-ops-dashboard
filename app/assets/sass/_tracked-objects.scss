@@ -16,7 +16,7 @@
   background: govuk-colour("white");
 }
 
-// print: no point capping height on paper — show everything, no scrollbar chrome
+// print: no point capping height on paper, show everything, no scrollbar chrome
 @media print {
   .msh-scroll-panel {
     max-height: none;

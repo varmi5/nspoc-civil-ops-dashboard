@@ -45,7 +45,7 @@ async function fetchReentryByObjectTypeRows (month) {
 // epoch=past both time out against a much larger, likely non-deduplicated archive. So
 // this is really "current tracked catalogue", not a month or lifetime total, made
 // explicit in the explainer text and tile labels below. epoch is passed explicitly
-// rather than relied on as a default (see CLAUDE.md).
+// rather than relied on as a default.
 async function fetchConjunctionStats () {
   return mshRequest('/v1/conjunction-events/stats?epoch=future')
 }
@@ -57,7 +57,7 @@ async function fetchConjunctionStats () {
 // That total is a raw screening count, not NSpOC's reported figure. No endpoint or filter
 // (including `report=present` on /v1/conjunction-events/list) narrows it to an
 // analyst-reviewed subset. This is a permanent MSH data-model gap, see the caveat on the
-// tile and CLAUDE.md's "Known open issue" section.
+// tile.
 async function fetchConjunctionMonthlyTotal (month) {
   const { start, end } = dateRangeFor(month)
   const rows = await mshRequest(`/v1/stats/monthly/conjunction-events-aggregated?start_date=${start}&end_date=${end}`)
@@ -180,7 +180,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
       key: 'launches',
       sectionKey: 'launches',
       label: 'Global Launches',
-      href: '/launches',
+      href: null,
       fetchRows: fetchLaunchesMonthlyRows,
       valueField: 'count',
       selectedMonth
@@ -202,12 +202,10 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     getSectionData('collision-fragmentation', { liveFetcher: () => fetchConjunctionMonthlyTotal(selectedMonth) })
   ])
 
-  // Renamed from "Collision Risks to UK Satellites", which borrowed NSpOC's metric name
-  // for a figure that isn't it: no confirmed UK-satellite filter (see narrative.js's
-  // collisionSentence), and it's a whole-catalogue snapshot, not scoped to a month.
-  // NSpOC's May 2026 report shows 1,285 for this metric; this endpoint returns ~14,000+
-  // for the same period, a different figure, not a wrong one, so the tile says what it
-  // actually measures.
+  // Not scoped to UK satellites and not scoped to a month, it's a whole-catalogue
+  // snapshot (see narrative.js's collisionSentence). NSpOC's May 2026 report shows 1,285
+  // for the equivalent metric; this endpoint returns ~14,000+ for the same period, a
+  // different figure, not a wrong one, so the tile says what it actually measures.
   const collisionRiskTile = buildConjunctionStatsTile({
     key: 'collision-risk',
     label: 'Conjunction Events Tracked (current catalogue)',
@@ -217,14 +215,14 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     caveat: "Not filtered to UK satellites and not scoped to this month. NSpOC's own reported figure isn't available via any MSH endpoint found so far. See Data sources."
   })
 
-  // Confirmed live: conjunction_event_alert_count isn't a monthly alert count, it's
-  // MSH's own classification of the entire current future-tracked catalogue into
-  // alert/normal (alert_count + normal_count = total_count exactly, ~13,825 events).
-  // It happened to read "1" here, coincidentally matching NSpOC's May figure, but it
-  // measures the live catalogue at page-load time, not alerts issued in any given
-  // month, and changes independently of which month is selected. Same permanent gap as
-  // Collision Risks above: no live data source for NSpOC's real figure, so this says so
-  // rather than showing a number that looks precise but isn't the right one.
+  // conjunction_event_alert_count isn't a monthly alert count, it's MSH's own
+  // classification of the entire current future-tracked catalogue into alert/normal
+  // (alert_count + normal_count = total_count exactly, ~13,825 events). It happened to
+  // read "1" here, coincidentally matching NSpOC's May figure, but it measures the live
+  // catalogue at page-load time, not alerts issued in any given month, and changes
+  // independently of which month is selected. Same permanent gap as Collision Risks
+  // above: no live data source for NSpOC's real figure, so this says so rather than
+  // showing a number that looks precise but isn't the right one.
   const collisionAlertTile = {
     key: 'collision-alerts',
     label: 'Collision Alerts from NSpOC',
@@ -252,7 +250,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
   // comparable to the current-catalogue tile (one row per event, most-recent CDM only):
   // this counts every screening recorded against the month, across every CDM revision
   // issued that month, so it can be larger despite being narrower in time. Also a raw
-  // screening count, not NSpOC's reported figure (see caveat below, CLAUDE.md).
+  // screening count, not NSpOC's reported figure (see caveat below).
   const collisionMonthTile = buildConjunctionMonthTile({
     key: 'collision-month-total',
     label: 'Collision Risks (This Month)',
@@ -269,24 +267,6 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     collisionMonthTile,
     collisionAnalysisTile,
     {
-      key: 'asteroids-count',
-      label: 'Close Approach Asteroids',
-      value: null,
-      previousValue: null,
-      delta: null,
-      href: '/asteroids',
-      status: STATUS.NOT_CONNECTED
-    },
-    {
-      key: 'asteroid-alerts',
-      label: 'Asteroid Alerts from NSpOC',
-      value: null,
-      previousValue: null,
-      delta: null,
-      href: '/asteroids',
-      status: STATUS.NOT_CONNECTED
-    },
-    {
       key: 'space-weather-alerts',
       label: 'Space Weather Alerts from Met Office',
       value: null,
@@ -297,15 +277,6 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     },
     launchesTile,
     fragmentationTile,
-    {
-      key: 'uk-objects',
-      label: 'UK Objects in Space',
-      value: null,
-      previousValue: null,
-      delta: null,
-      href: '/resident-space-objects',
-      status: STATUS.NOT_CONNECTED
-    },
     {
       key: 'other-alerts',
       label: 'Other Alerts / Issues',
@@ -356,7 +327,7 @@ async function buildMonthlyOverviewViewModel (requestedMonth) {
     donuts: [
       { title: 'Re-Entry', chart: reentryDonut, status: reentryObjectTypeRows.status, href: '/re-entry' },
       { title: 'Collision', chart: collisionDonut, status: conjunctionListResult.status, href: '/collision-fragmentation' },
-      { title: 'Asteroids', chart: buildDonut([]), status: STATUS.NOT_CONNECTED, href: '/asteroids' },
+      { title: 'Asteroids', chart: buildDonut([]), status: STATUS.NOT_CONNECTED, href: null },
       { title: 'Space Weather', chart: buildDonut([]), status: STATUS.NOT_CONNECTED, href: '/space-weather' },
       { title: 'Service Status', chart: buildDonut([]), status: STATUS.NOT_CONNECTED, href: null }
     ]

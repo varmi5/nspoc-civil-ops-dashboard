@@ -1,6 +1,6 @@
 // One-off re-verification (2026-08-11): confirm the aggregated monthly conjunction
-// endpoint still behaves as documented in CLAUDE.md before responding to a query about
-// whether the dashboard's "monthly conjunction" figure is using the right endpoint.
+// endpoint still behaves as expected before responding to a query about whether the
+// dashboard's "monthly conjunction" figure is using the right endpoint.
 const config = require('../app/lib/msh/config')
 const tokenCache = require('../app/lib/msh/token-cache')
 

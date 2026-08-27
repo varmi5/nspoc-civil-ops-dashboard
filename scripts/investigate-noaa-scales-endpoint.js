@@ -1,5 +1,5 @@
 // Follow-up to investigate-noaa-alerts-shape.js: NOAA SWPC also publishes
-// noaa-scales.json — a structured current/predicted R/S/G scale endpoint that could avoid
+// noaa-scales.json, a structured current/predicted R/S/G scale endpoint that could avoid
 // parsing free-text alert messages entirely for the "what's the current scale level" part
 // of the sector table. Also grabs the two product_ids not seen in the first alerts.json
 // sample (SGIW/SGIA for geomagnetic sudden impulse, P11W for proton flux) since Krish's CSV

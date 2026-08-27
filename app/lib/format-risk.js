@@ -1,6 +1,6 @@
 // Risk enum has six values, not three. "Pending" isn't a severity level, it means "not
 // yet assessed", so it's filtered out below and treated the same as null/missing.
-const RISK_RANK = { none: 0, 'very low': 1, low: 2, medium: 3, high: 4, critical: 5 }
+const RISK_RANK = { none: 0, 'very low': 1, low: 2, medium: 3, high: 4 }
 
 // Picks the worst of several risk fields (atmospheric/human-casualty/fragments risk are
 // separate fields on a reentry event). MSH leaves these null until an analyst closes out
@@ -23,11 +23,9 @@ function highestRisk (...values) {
 }
 
 // Worst of atmospheric/fragments risk on a reentry event. Human casualty risk is
-// excluded (confirmed with NSpOC, not actually checked). MSH's TIP records carry no risk
-// fields at all (confirmed against MSH's own TIPOut schema and a live fetch), only the
-// event itself ever holds a risk value, and there's no history/revision endpoint to see
-// what it used to be. So this reads the event's current fields, there's nothing else to
-// read.
+// excluded from this figure, and that exclusion hasn't been verified against NSpOC's own
+// figures. MSH's TIP records carry no risk fields at all, only the event itself ever
+// holds a risk value, so this reads the event's current fields.
 function reentryRisk (event) {
   return highestRisk(event.atmospheric_risk, event.fragments_risk)
 }

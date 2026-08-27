@@ -1,18 +1,15 @@
 {#
-Renders the object from app/lib/charts/line-chart.js: one or two lines sharing a chart
-but not a scale, each is independently scaled to its own max (see line-chart.js, sharing
-a scale would flatten the smaller series). Since the two lines don't share a scale, the
-legend states each one's own range (0 to its max), otherwise two lines of similar-looking
-height read as similar-sized numbers even when one's peak is several times the other's.
-Points carry native <title> tooltips, same pattern as bar-chart.njk.
+Renders the chart object from app/lib/charts/line-chart.js: up to two lines sharing a
+chart but not a scale, each independently scaled to its own max, so the legend states
+each line's own range (0 to its max) rather than implying a shared one. Points carry
+native <title> tooltips.
 
-`countLabel`/`alertLabel` default to re-entry's wording, pass different labels when
-"alerts" isn't right (e.g. Collision & Fragmentation's second line is a
-probability-threshold count, not an alert). `alertShortLabel` (default "alerts") repeats
-under every point in the label strip, so keep it to one or two words.
+countLabel/alertLabel default to re-entry's wording; pass different labels when "alerts"
+isn't right (e.g. Collision & Fragmentation's second line is a probability-threshold
+count). alertShortLabel repeats under every point, keep it to one or two words.
 
-`chart.alertLine` is null when there's no second series (e.g. fragmentation has no
-alerts-equivalent figure), that line is skipped rather than drawing a fake flat line.
+chart.alertLine is null when there's no second series, that line is skipped rather than
+drawn flat.
 #}
 {% macro lineChart(title, chart, countLabel, alertLabel, alertShortLabel) %}
   {% set countLabel = countLabel or "Number of Re-Entries" %}

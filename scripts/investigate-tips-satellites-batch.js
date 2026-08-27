@@ -1,8 +1,7 @@
 // One-off dev tool: re-entry.js's attachLatestLocation fans out to 2 per-object calls
 // (/v1/tips/{norad_id}, /v1/satellites/{norad_id}) for up to 60 tracked objects per page
 // load. Before accepting that as irreducible, check whether MSH exposes a bulk/catalog
-// equivalent for either call — per CLAUDE.md's own "always check for a sibling before
-// assuming an endpoint is irreducibly slow" lesson from the conjunction-events case.
+// equivalent for either call, the conjunction-events case turned out to have one.
 //
 // Run with: node --env-file=.env scripts/investigate-tips-satellites-batch.js
 

@@ -59,10 +59,10 @@ function fillMonthlySeries (rows, months, endMonth) {
 }
 
 // Conjunction rows carry a probability-band breakdown, not a single count. The raw
-// monthly total (tens of thousands of screenings) used to be plotted too, but it's so far
-// from NSpOC's reported figure it read as simply wrong, so it's dropped. The "> 1e-3" band
-// (screenings past the analysis threshold) is shown instead, as the closest proxy for
-// NSpOC's "Alerts Issued" line (MSH has no literal alerts concept for conjunctions).
+// monthly total (tens of thousands of screenings) is dropped, it runs so far from
+// NSpOC's reported figure that it reads as simply wrong. The "> 1e-3" band (screenings
+// past the analysis threshold) is shown instead, as the closest proxy for NSpOC's
+// "Alerts Issued" line (MSH has no literal alerts concept for conjunctions).
 function fillConjunctionMonthlySeries (rows, months, endMonth) {
   const byMonth = rows.reduce((acc, row) => {
     acc[row.month] = row['> 1e-3'] || 0

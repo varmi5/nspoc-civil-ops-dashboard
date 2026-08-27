@@ -1,5 +1,5 @@
-// Deterministic, template-built sentences, no LLM, so there's no hallucination risk for
-// OFFICIAL-classified figures going in front of a minister. Every number comes straight
+// Template-built from fixed logic, not free text, so figures can't be misstated on
+// OFFICIAL-classified content going in front of a minister. Every number comes straight
 // from the Monthly Overview view-model, this module only picks the wording.
 
 function findTile (tiles, key) {
@@ -95,10 +95,10 @@ function dataQualitySentence (viewModel) {
   const notConnected = viewModel.tiles.filter((tile) => tile.status === 'not-connected').length
 
   if (unavailable) {
-    return 'Some figures could not be shown because the live MSH service did not respond to this request — see Data sources.'
+    return 'Some figures could not be shown because the live MSH service did not respond to this request, see Data sources.'
   }
   if (notConnected) {
-    return 'Some figures on this page are not yet connected to a live data source and are not shown — see Data sources.'
+    return 'Some figures on this page are not yet connected to a live data source and are not shown, see Data sources.'
   }
   return null
 }

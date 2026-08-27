@@ -1,19 +1,10 @@
-// Product_id families and what they map to, checked against NOAA's live feed:
+// Maps NOAA product_id prefixes to alert type. K-index below 5 has no NOAA Scale line
+// (G-scale starts at K=5), and neither electron flux (EF3A) nor geomagnetic sudden
+// impulse (SGIW/SGIA) ever carries a Scale line, so scaleLevel stays null for those and
+// sectorStatusesForDay treats that as no impact.
 //
-//   K04A/K04W..K07A/K07W    Geomagnetic K-index          -> kp_alert
-//                           (K below 5 has no NOAA Scale line at all, G-scale only
-//                           starts at K=5, so scaleLevel stays null and
-//                           sectorStatusesForDay treats that as no impact)
-//   XM..A/XM..S/XX..A/XX..S X-ray flux                   -> xray_radio_blackout_alert
-//   EF3A                    Electron flux                -> electron_flux_alert
-//                           (never carries a NOAA Scale line)
-//   SGIW/SGIA               Geomagnetic Sudden Impulse   -> geomagnetic_sudden_impulse_alert
-//                           (never carries a NOAA Scale line)
-//   P1..W/P1..A             Proton flux                  -> proton_flux_alert
-//
-// Deliberately excluded: A20F/A30F geomagnetic storm WATCHes (forecasts, not confirmed
-// conditions), TIIA/TIVA (Type II/IV radio bursts, not a NOAA scale category), BHIS
-// (10cm radio burst summary, informational only).
+// Excluded: A20F/A30F geomagnetic storm WATCHes (forecasts, not confirmed conditions),
+// TIIA/TIVA (radio bursts, not a NOAA scale category), BHIS (informational only).
 const TYPE_RULES = [
   { pattern: /^K\d/i, type: 'kp_alert' },
   { pattern: /^X[MX]\d/i, type: 'xray_radio_blackout_alert' },

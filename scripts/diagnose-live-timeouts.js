@@ -1,5 +1,5 @@
 // One-off dev tool: the dev server just logged "MSH live fetch failed ... This operation
-// was aborted" for re-entry, collision-fragmentation, AND launches — sections this fix
+// was aborted" for re-entry, collision-fragmentation, AND launches, sections this fix
 // didn't touch, so it's not specific to the re-entry change. Uses the REAL production
 // client (app/lib/msh/client.js, same fixed 4s abort) against every endpoint those three
 // sections call, individually and then all together (mirroring the real concurrent

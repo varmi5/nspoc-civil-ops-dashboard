@@ -1,5 +1,5 @@
 // One-off dev tool: tests the specific endpoints flagged in the analyst-primer doc that we
-// haven't tried yet — does conjunction-events have the same sparse-catalog-data gap as
+// haven't tried yet. Does conjunction-events have the same sparse-catalog-data gap as
 // reentry-events? Does /for-analysis give a more meaningful "needs attention" count?
 //
 // Run with: node --env-file=.env scripts/explore-conjunction-detail-endpoints.js

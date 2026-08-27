@@ -1,12 +1,6 @@
-// Some MSH endpoints respond slowly enough to hit our request timeout on every call
-// (e.g. /v1/stats/monthly/conjunction-events with a date range). A plain TTL cache still
-// pays that full timeout cost on the first request after every expiry, measured at
-// ~4.4s cold vs ~0.3s warm on this endpoint.
-//
-// Instead this serves stale-but-real data immediately once a key has succeeded once, and
-// refreshes it in the background. A user only ever waits out a slow endpoint on the very
-// first request for a key (e.g. a brand new reporting month), never after. Standard
-// stale-while-revalidate.
+// Stale-while-revalidate cache: once a key has succeeded once, serves the stale value
+// immediately and refreshes it in the background, so a slow MSH endpoint (some take
+// ~4.4s cold vs ~0.3s warm) only blocks the very first request for that key.
 const STALE_AFTER_MS = 5 * 60 * 1000 // age at which a background refresh is triggered
 const FAILURE_RETRY_MS = 30 * 1000 // how soon to retry a key that has NEVER succeeded
 

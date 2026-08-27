@@ -1,9 +1,9 @@
-// FIRST DRAFT, NOT SIGNED OFF: see space-weather/index.html's explainer for the
-// user-facing version of this caveat. Krish's MOSWOC sector table shows the output of
-// this kind of mapping but not the rules behind it, and whether the threshold is fixed
-// or judgement-based is still an open question. This mapping is built from NOAA's own
-// published "Potential Impacts" text per scale level (G-scale cites power-grid currents
-// and satellite drag, R-scale cites HF radio blackout). Don't treat its output as
+// First draft, not signed off by NSpOC: see space-weather/index.html's explainer for the
+// user-facing version of this caveat. The MOSWOC sector table shows the output of this
+// kind of mapping but not the rules behind it, so it's not clear whether the real
+// threshold is fixed or judgement-based. This mapping is built from NOAA's own published
+// "Potential Impacts" text per scale level (G-scale cites power-grid currents and
+// satellite drag, R-scale cites HF radio blackout). Don't treat its output as
 // NSpOC-approved without validating against real historical reports.
 const SECTORS = ['localResilience', 'energy', 'aviation', 'marine', 'satelliteOperators', 'satelliteComms', 'rail']
 

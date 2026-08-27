@@ -1,6 +1,6 @@
-// One-off dev tool: builds the space-weather view-model against BOTH the fixture (Krish's
-// real June 2026 CSV, converted) and the live NOAA feed, and prints only the days that
-// have at least one alert — the quickest way to sanity-check the parser + sector-rules
+// One-off dev tool: builds the space-weather view-model against BOTH the fixture (a
+// converted real June 2026 CSV) and the live NOAA feed, and prints only the days that
+// have at least one alert, the quickest way to sanity-check the parser + sector-rules
 // mapping against real data before trusting the page.
 //
 // Run with: node --env-file=.env scripts/verify-space-weather.js
@@ -17,7 +17,7 @@ function printNonGreenDays (viewModel, label) {
 }
 
 async function main () {
-  console.log('Fixture run (USE_LIVE_SPACE_WEATHER should still try live first unless forced off) — forcing fixture via month with no live alerts is not how this works, so this call still hits live NOAA. Testing fixture path directly via env override instead.')
+  console.log('Fixture run (USE_LIVE_SPACE_WEATHER should still try live first unless forced off). Forcing fixture via month with no live alerts is not how this works, so this call still hits live NOAA. Testing fixture path directly via env override instead.')
 
   const fixtureViewModel = await (async () => {
     process.env.USE_LIVE_SPACE_WEATHER = 'false'

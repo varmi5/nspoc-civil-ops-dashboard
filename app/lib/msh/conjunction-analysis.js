@@ -5,12 +5,12 @@ const { mshRequest } = require('./client')
 // need analyst attention, with real probabilities and object details already inlined.
 const ANALYSIS_THRESHOLD = 0.001
 
-// This endpoint returns one row per CDM revision, not one per unique event. The same
-// short_id can appear repeatedly as Space-Track refines its estimate (seen one object
-// 5 times with 5 different cdm_external_id values). Keep only the highest (most recent)
-// CDM per short_id, or "5 events requiring analysis" would really mean "1 event, refined
-// 5 times." Shared by the Collision & Fragmentation table and Monthly Overview tile so
-// the count can't drift between the two.
+// This endpoint returns one row per CDM revision, not one per unique event: the same
+// short_id can appear repeatedly as Space-Track refines its estimate, each with a
+// different cdm_external_id. Keep only the highest (most recent) CDM per short_id, or
+// "5 events requiring analysis" would really mean "1 event, refined 5 times." Shared by
+// the Collision & Fragmentation table and Monthly Overview tile so the count can't drift
+// between the two.
 function dedupeToLatestCdmPerEvent (events) {
   const latestByShortId = new Map()
   for (const event of events) {

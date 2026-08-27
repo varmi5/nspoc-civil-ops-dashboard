@@ -58,7 +58,7 @@ function summarise (body) {
 
 async function main () {
   if (!config.clientId || !config.clientSecret) {
-    console.error('MSH_CLIENT_ID / MSH_CLIENT_SECRET are not set in .env — fill them in before running this script.')
+    console.error('MSH_CLIENT_ID / MSH_CLIENT_SECRET are not set in .env, fill them in before running this script.')
     process.exitCode = 1
     return
   }

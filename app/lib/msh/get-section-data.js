@@ -1,11 +1,10 @@
 const dataSource = require('./data-source')
 const { STATUS } = require('./status')
 
-// Every view-model calls this instead of the MSH client directly, so the status always
-// reflects what happened on this request rather than a stale fixture. status is one of:
-//   'live'          - the live fetch succeeded, data is real
-//   'unavailable'   - configured for live but this request's fetch failed
-//   'not-connected' - not configured for live (liveCapable false, or USE_LIVE_* off)
+// Every view-model calls this instead of the MSH client directly, so status always
+// reflects what happened on this request rather than a stale fixture: 'live' (fetch
+// succeeded), 'unavailable' (configured for live but this fetch failed), or
+// 'not-connected' (not configured for live).
 async function getSectionData (sectionKey, { liveFetcher }) {
   if (!dataSource.isConfiguredForLive(sectionKey)) {
     return { data: null, status: STATUS.NOT_CONNECTED }

@@ -18,7 +18,7 @@
 {{ mshBadge(viewModel.status) }}
 <h1 class="govuk-heading-xl">Collision &amp; Fragmentation</h1>
 
-<p class="govuk-body">Reporting month: <strong>{{ viewModel.selectedMonthLabel }}</strong>. This picks the month for the two charts and two donuts below — it does not affect the fragmentation incidents table further down, which has its own separate lookback selector.</p>
+<p class="govuk-body">Reporting month: <strong>{{ viewModel.selectedMonthLabel }}</strong>. This picks the month for the two charts and two donuts below. It does not affect the fragmentation incidents table further down, which has its own separate lookback selector.</p>
 {{ monthSelector("/collision-fragmentation", viewModel.selectedMonth, viewModel.monthOptions, { fragmentationMonths: viewModel.fragmentationLookbackMonths }) }}
 
 {{ explainer("What do \"conjunction\" and \"fragmentation\" mean, and what does the chart below actually show?", "
@@ -27,11 +27,11 @@
     <li><strong>Conjunction:</strong> two tracked objects passing close together in orbit. It's what we call a collision risk before it's assessed. MSH tracks these as <code>conjunction-events</code>.</li>
     <li><strong>Fragmentation:</strong> a breakup incident, where an object splits into new trackable debris. MSH tracks these as <code>fragmentation-events</code>.</li>
   </ul>
-  <p class='govuk-body'>NSpOC's own report has a single \"Collision Risks to UK Satellites\" figure (1,285 in its May 2026 report), and a separate \"Alerts Issued\" line. We don't show an equivalent to the first number on this page: MSH's raw monthly screening count runs around 50,000-60,000 — every conjunction MSH's software flagged that month, the overwhelming majority wide misses with no real risk — so far from NSpOC's figure that showing it, even caveated, read as simply wrong. It's been dropped entirely. The chart below shows the closest available proxy for \"Alerts Issued\" instead: screenings that crossed the analysis probability threshold (> " + viewModel.analysisThreshold + ") that month — MSH has no literal \"alert\" concept for conjunctions, so this is a proxy, not NSpOC's own alert figure. See <a class='govuk-link govuk-link--no-visited-state' href='/data-sources'>Data sources</a> for the full investigation.</p>
+  <p class='govuk-body'>NSpOC's own report has a single \"Collision Risks to UK Satellites\" figure (1,285 in its May 2026 report), and a separate \"Alerts Issued\" line. We don't show an equivalent to the first number on this page: MSH's raw monthly screening count runs around 50,000-60,000, every conjunction MSH's software flagged that month, the overwhelming majority wide misses with no real risk, so far from NSpOC's figure that showing it, even caveated, read as simply wrong. It's been dropped entirely. The chart below shows the closest available proxy for \"Alerts Issued\" instead: screenings that crossed the analysis probability threshold (> " + viewModel.analysisThreshold + ") that month. MSH has no literal \"alert\" concept for conjunctions, so this is a proxy, not NSpOC's own alert figure. See <a class='govuk-link govuk-link--no-visited-state' href='/data-sources'>Data sources</a> for the full investigation.</p>
 ") }}
 
 <h2 class="govuk-heading-l">Conjunction alerts issued (12 months to {{ viewModel.selectedMonthLabel }})</h2>
-<p class="govuk-body">Screenings crossing the probability > {{ viewModel.analysisThreshold }} threshold each month — a proxy for NSpOC's own "Alerts Issued" figure, not the figure itself. See the explainer above.</p>
+<p class="govuk-body">Screenings crossing the probability > {{ viewModel.analysisThreshold }} threshold each month, a proxy for NSpOC's own "Alerts Issued" figure, not the figure itself. See the explainer above.</p>
 {{ lineChart("Conjunction alerts issued", viewModel.trendChart, "Alerts Issued (> " + viewModel.analysisThreshold + ")") }}
 
 <h2 class="govuk-heading-l">Fragmentation incidents tracked (12 months to {{ viewModel.selectedMonthLabel }})</h2>

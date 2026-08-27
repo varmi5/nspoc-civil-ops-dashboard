@@ -1,5 +1,5 @@
 // Single source of truth for "which endpoint backs this figure", read by the
-// /data-sources page. Keep CLAUDE.md's endpoint table in sync with this list.
+// /data-sources page.
 //
 // `gate` decides how "connected" is worked out for each row:
 //   'msh'  - live when sections.js's liveCapable flag is true AND USE_LIVE_MSH=true
@@ -122,8 +122,8 @@ module.exports = [
     page: 'Re-Entry', pageHref: '/re-entry',
     figure: 'Risk rating (table, map and object page)',
     sectionKey: 're-entry', gate: 'msh',
-    endpoints: ['/v1/tips/{norad_id}'],
-    description: 'Highest risk the object has ever reached, not just its current rating (risk usually decays to none by decay date). Human casualty risk excluded, confirmed with NSpOC as not checked. No MSH endpoint returns this directly, so it\'s worked out here from full TIP history.'
+    endpoints: ['/v1/reentry-events/'],
+    description: 'Highest of atmospheric_risk and fragments_risk, read directly off the reentry-event record. Human casualty risk is excluded from this figure and that exclusion hasn\'t been verified against NSpOC\'s own figures. TIP records carry no risk fields at all.'
   },
   {
     page: 'Re-Entry', pageHref: '/re-entry',
@@ -168,17 +168,17 @@ module.exports = [
     description: 'NOAA\'s public alerts feed, no authentication required. Sector colour mapping is a first draft, not yet signed off by NSpOC.'
   },
   {
-    page: 'Procurement', pageHref: '/procurement',
+    page: 'Procurement', pageHref: null,
     figure: 'Procurement',
-    sectionKey: 'procurement', gate: 'none',
+    sectionKey: null, gate: 'none',
     endpoints: [],
-    description: 'Listed in navigation; no route, view, or data source yet.'
+    description: 'No route, view, or data source built yet.'
   },
   {
-    page: 'Org Chart', pageHref: '/org-chart',
+    page: 'Org Chart', pageHref: null,
     figure: 'Org Chart',
-    sectionKey: 'org-chart', gate: 'none',
+    sectionKey: null, gate: 'none',
     endpoints: [],
-    description: 'Listed in navigation; no route, view, or data source yet.'
+    description: 'No route, view, or data source built yet.'
   }
 ]

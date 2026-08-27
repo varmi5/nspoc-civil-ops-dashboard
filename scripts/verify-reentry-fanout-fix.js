@@ -29,7 +29,7 @@ async function main () {
   console.log(`Total time: ${ms}ms, total MSH calls: ${callCount}`)
   console.log('Calls by endpoint:', JSON.stringify(callsByPrefix, null, 2))
 
-  console.log('\n=== /re-entry/map (buildReEntryMapViewModel) — same cache, should be near-free ===')
+  console.log('\n=== /re-entry/map (buildReEntryMapViewModel), same cache, should be near-free ===')
   callCount = 0
   for (const key of Object.keys(callsByPrefix)) delete callsByPrefix[key]
   const t1 = Date.now()

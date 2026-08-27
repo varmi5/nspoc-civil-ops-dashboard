@@ -1,5 +1,5 @@
 // One-off dev tool: prints full sample records (not just key names) for the fields whose
-// *value format* still needs confirming — risk enums, probabilities, survivability —
+// *value format* still needs confirming (risk enums, probabilities, survivability)
 // before any badge/donut-bucket logic gets written. Free-text "*_comment" fields are
 // redacted to [present]/[null] since their content isn't needed here and may be
 // OFFICIAL-sensitive narrative.

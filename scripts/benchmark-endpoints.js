@@ -1,12 +1,12 @@
 // Reusable dev tool: fires each candidate endpoint N times and reports min/median/p95
 // latency, so a "does a faster equivalent exist" question can be answered with numbers
 // instead of guessing. Follows the same investigate-*.js convention as the rest of
-// scripts/ — kept as living documentation of real, tested API behaviour.
+// scripts/, kept as living documentation of real, tested API behaviour.
 //
 // Run with: node --env-file=.env scripts/benchmark-endpoints.js
 //
 // To add a new comparison, add an entry to CANDIDATES below: a group name and a list of
-// {label, path} variants that return equivalent data — the report ranks them by median
+// {label, path} variants that return equivalent data. The report ranks them by median
 // latency within their group so the fastest option is obvious.
 
 const config = require('../app/lib/msh/config')
